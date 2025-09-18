@@ -1,5 +1,4 @@
 stages:
-  - install
   - build
   - deploy
 
@@ -7,15 +6,9 @@ variables:
   NODE_ENV: production
   NODE_VERSION: "20"
 
-install_dependencies:
-  image: node:${NODE_VERSION}-alpine
-  stage: install
-  script:
-    - npm ci
-  cache:
-    key: ${CI_COMMIT_REF_SLUG}
-    paths:
-      - node_modules/
+cache:
+  paths:
+    - node_modules/
 
 build_project:
   image: node:${NODE_VERSION}-alpine
@@ -25,7 +18,9 @@ build_project:
     - npm run build
   artifacts:
     paths:
-      - dist/
+      - .next
+      - node_modules
+    expire_in: 1h
 
 deploy:
   stage: deploy
