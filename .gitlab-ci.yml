@@ -54,6 +54,5 @@ Deploy:
     name: production
   script:
     - npm install -g vercel
-    - vercel whoami
-    - vercel --prod --confirm --token=$VERCEL_TOKEN --project $VERCEL_PROJECT_ID
+    - vercel --token=$VERCEL_TOKEN --project $VERCEL_PROJECT_ID --scope $VERCEL_ORG_ID
 
