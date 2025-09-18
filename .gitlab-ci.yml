@@ -1,34 +1,38 @@
 stages:
+  - install
   - build
   - deploy
 
 variables:
   NODE_ENV: production
+  NODE_VERSION: "20"
 
-cache:
-  paths:
-    - node_modules/
+install_dependencies:
+  image: node:${NODE_VERSION}-alpine
+  stage: install
+  script:
+    - npm ci
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - node_modules/
 
-before_script:
-  - npm ci
-
-build:
+build_project:
+  image: node:${NODE_VERSION}-alpine
   stage: build
   script:
+    - npm ci
     - npm run build
   artifacts:
     paths:
-      - .next
-      - node_modules
-    expire_in: 1h
+      - dist/
 
 deploy:
   stage: deploy
   script:
     - npm install -g vercel
     - vercel --prod --token=$VERCEL_TOKEN --confirm --scope $VERCEL_ORG_ID --project $VERCEL_PROJECT_ID
-  environment:
-    name: production
-    url: https://your-app.vercel.app
   only:
     - main
+    - dev
+  
