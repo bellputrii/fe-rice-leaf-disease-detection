@@ -31,7 +31,8 @@ Build:
   <<: *base_rules
   stage: build
   needs:
-    - Install
+    - job: Install
+      artifacts: true
   script:
     - npm run build
   artifacts:
@@ -39,6 +40,7 @@ Build:
       - .next/
       - node_modules/
     expire_in: 1h
+
 
 Deploy:
   <<: *base_rules
