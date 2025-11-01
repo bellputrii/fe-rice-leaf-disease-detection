@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import LayoutNavbar from '@/components/public/LayoutNavbar'
-import { BookOpen, Users, FileText, Plus, Play, Edit, Trash2, Filter, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
+import { BookOpen, Users, FileText, Plus, Play, Filter, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
 import Footer from '@/components/public/Footer'
 
 interface Class {
@@ -48,7 +48,7 @@ export default function TeacherDashboard() {
   const [isVisible, setIsVisible] = useState(false)
   const [classes, setClasses] = useState<Class[]>([])
   const [filteredClasses, setFilteredClasses] = useState<Class[]>([])
-  const [categories, setCategories] = useState<Category[]>([
+  const [categories] = useState<Category[]>([
     { id: 1, name: 'Essay' },
     { id: 2, name: 'Bussiness Plan' },
     { id: 3, name: 'Penelitian' },
@@ -89,6 +89,7 @@ export default function TeacherDashboard() {
       const result = await response.json()
       if (result.success) {
         // Transform API data to match our interface
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const transformedClasses = result.data.map((cls: any) => ({
           ...cls,
           title: cls.name,

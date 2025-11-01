@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import LayoutNavbar from '@/components/public/LayoutNavbar'
-import { ArrowLeft, Plus, Edit, Trash2, FileText, Video, File, Image as ImageIcon, BookOpen, Download, Play, X, Upload, CheckCircle, XCircle, AlertTriangle, Users, List } from 'lucide-react'
+import { ArrowLeft, Plus, Edit, Trash2, FileText, Video, File, Image as ImageIcon, BookOpen, Download, X, CheckCircle, XCircle, AlertTriangle, List } from 'lucide-react'
 import Footer from '@/components/public/Footer'
 
 interface Material {
@@ -381,6 +381,7 @@ export default function MaterialsPage() {
   }
 
   // Get file type icon
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const getFileTypeIcon = (fileName: string) => {
     if (fileName?.includes('.mp4') || fileName?.includes('.mov') || fileName?.includes('.avi')) {
       return <Video className="w-4 h-4" />
@@ -392,6 +393,7 @@ export default function MaterialsPage() {
   }
 
   // Get file type label
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const getFileTypeLabel = (fileName: string) => {
     if (fileName?.includes('.mp4') || fileName?.includes('.mov') || fileName?.includes('.avi')) {
       return 'Video'
@@ -532,7 +534,7 @@ export default function MaterialsPage() {
                   Daftar Materi
                 </h2>
                 <p className="text-gray-700 text-sm sm:text-base">
-                  Kelola materi pembelajaran untuk section "{section.title}"
+                  Kelola materi pembelajaran untuk section `{section.title}`
                 </p>
               </div>
               <button 
@@ -665,7 +667,7 @@ export default function MaterialsPage() {
                 <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Belum ada materi</h3>
                 <p className="text-gray-500 mb-6 max-w-md mx-auto">
-                  Mulai dengan membuat materi pertama untuk section "{section.title}"
+                  Mulai dengan membuat materi pertama untuk section `{section.title}``
                 </p>
                 <button 
                   onClick={handleCreateMaterial}

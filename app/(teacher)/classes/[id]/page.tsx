@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import LayoutNavbar from '@/components/public/LayoutNavbar'
-import { ChevronLeft, Plus, Edit, Trash2, BookOpen, Users, FileText, Video, Play, Award, X, Upload, Image as ImageIcon, CheckCircle, XCircle, AlertTriangle, File, List, ArrowLeft } from 'lucide-react'
+import { Plus, Edit, Trash2, BookOpen, Users, FileText, Award, X, CheckCircle, XCircle, AlertTriangle, File, List, ArrowLeft } from 'lucide-react'
 import Footer from '@/components/public/Footer'
 
 interface Class {
@@ -723,7 +723,7 @@ export default function ClassDetailPage() {
               </div>
               
               <p className="text-gray-600 mb-6">
-                Apakah Anda yakin ingin menghapus section <span className="font-semibold text-gray-900">"{showDeleteConfirm.sectionTitle}"</span>? Tindakan ini tidak dapat dibatalkan.
+                Apakah Anda yakin ingin menghapus section <span className="font-semibold text-gray-900">`{showDeleteConfirm.sectionTitle}`</span>? Tindakan ini tidak dapat dibatalkan.
               </p>
 
               <div className="flex gap-3 justify-end">
