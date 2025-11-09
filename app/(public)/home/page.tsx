@@ -1,19 +1,110 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link' // Tambahkan import Link di sini
+import Link from 'next/link'
 import Image from 'next/image'
 import LayoutNavbar from '@/components/public/LayoutNavbar'
-import { ChevronLeft, ChevronRight, Play, Users, Trophy, BookOpen, Award, ArrowRight, Video, FileText } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Play, Users, Trophy, BookOpen, Award, ArrowRight, Video, FileText, Clock, Star, Eye } from 'lucide-react'
 import Footer from '@/components/public/Footer'
+
+interface Course {
+  id: number
+  category: string
+  title: string
+  image: string
+  duration: string
+  participants: string
+  level: string
+  rating: number
+  instructor: string
+  featured?: boolean
+  description: string
+}
 
 export default function Home() {
   const [currentSlide, setCurrentSlide] = useState(0)
   const [isVisible, setIsVisible] = useState(false)
-  const [filteredCourses, setFilteredCourses] = useState<Course[]>([])
+  const [courses, setCourses] = useState<Course[]>([])
 
   useEffect(() => {
     setIsVisible(true)
+    // Set dummy data untuk courses
+    setCourses([
+      {
+        id: 1,
+        category: 'essay',
+        title: 'Menulis Esai Akademik yang Menang',
+        image: '/essay.png',
+        duration: '6 Jam',
+        participants: '420',
+        level: 'Pemula',
+        rating: 4.8,
+        instructor: 'Dr. Sarah Wijaya',
+        featured: true,
+        description: 'Pelajari teknik menulis esai akademik yang memenangkan kompetisi'
+      },
+      {
+        id: 2,
+        category: 'business',
+        title: 'Business Plan untuk Kompetisi Startup',
+        image: '/business-plan.png',
+        duration: '8 Jam',
+        participants: '310',
+        level: 'Menengah',
+        rating: 4.9,
+        instructor: 'Prof. Ahmad Rahman',
+        featured: true,
+        description: 'Buat business plan yang menarik investor dan juri kompetisi'
+      },
+      {
+        id: 3,
+        category: 'research',
+        title: 'Karya Tulis Ilmiah & Publikasi',
+        image: '/karya-tulis-ilmiah.png',
+        duration: '5 Jam',
+        participants: '280',
+        level: 'Pemula',
+        rating: 4.7,
+        instructor: 'Dr. Lisa Santoso',
+        description: 'Teknik penulisan karya ilmiah dan strategi publikasi'
+      },
+      {
+        id: 4,
+        category: 'design',
+        title: 'Desain Poster Akademik yang Impactful',
+        image: '/poster.png',
+        duration: '4 Jam',
+        participants: '355',
+        level: 'Pemula',
+        rating: 4.6,
+        instructor: 'Maya Desain',
+        description: 'Belajar prinsip desain visual untuk poster akademik'
+      },
+      {
+        id: 5,
+        category: 'essay',
+        title: 'Teknik Menulis Essay Beasiswa',
+        image: '/essay.png',
+        duration: '7 Jam',
+        participants: '290',
+        level: 'Menengah',
+        rating: 4.8,
+        instructor: 'Dr. Sarah Wijaya',
+        description: 'Rahasia menulis essay beasiswa yang mendapatkan approval'
+      },
+      {
+        id: 6,
+        category: 'business',
+        title: 'Analisis Pasar untuk Business Plan',
+        image: '/business-plan.png',
+        duration: '5 Jam',
+        participants: '320',
+        level: 'Lanjutan',
+        rating: 4.7,
+        instructor: 'Prof. Ahmad Rahman',
+        description: 'Teknik analisis pasar yang komprehensif untuk business plan'
+      }
+    ])
   }, [])
 
   const heroSlides = [
@@ -57,6 +148,14 @@ export default function Home() {
     { value: '500+', label: 'Prestasi', icon: <Trophy className="w-5 h-5 md:w-6 md:h-6" /> },
     { value: '100+', label: 'Mentor', icon: <BookOpen className="w-5 h-5 md:w-6 md:h-6" /> },
     { value: '50+', label: 'Kampus', icon: <Award className="w-5 h-5 md:w-6 md:h-6" /> },
+  ]
+
+  const categories = [
+    { id: 'all', name: 'Semua Kelas', icon: <BookOpen className="w-5 h-5" /> },
+    { id: 'essay', name: 'Essay & Writing', icon: <FileText className="w-5 h-5" /> },
+    { id: 'business', name: 'Business Plan', icon: <Trophy className="w-5 h-5" /> },
+    { id: 'research', name: 'Penelitian', icon: <Award className="w-5 h-5" /> },
+    { id: 'design', name: 'Desain', icon: <Video className="w-5 h-5" /> }
   ]
 
   return (
@@ -205,66 +304,130 @@ export default function Home() {
             </div>
           </section>
 
-          {/* Kategori Prestasi */}
+          {/* Kategori Kelas - Menggantikan Kategori Lomba & Kompetisi */}
           <section className="w-full max-w-7xl mx-auto">
             <div className="text-center mb-6 md:mb-8">
               <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-3 md:mb-4">
-                Kategori Lomba & Kompetisi
+                Kategori Kelas yang Tersedia
               </h2>
               <p className="text-gray-700 max-w-2xl mx-auto text-sm sm:text-base">
-                Temukan berbagai jenis kompetisi yang sesuai dengan minat dan bakatmu
+                Pilih kategori kelas yang sesuai dengan minat dan kebutuhan belajarmu
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              {[
-                { 
-                  title: 'Essay', 
-                  image: '/essay.png', 
-                  count: '50+ Lomba',
-                  participants: '2.5K+ Peserta'
-                },
-                { 
-                  title: 'Business Plan', 
-                  image: '/business-plan.png', 
-                  count: '30+ Kompetisi',
-                  participants: '1.8K+ Peserta'
-                },
-                { 
-                  title: 'Karya Tulis Ilmiah', 
-                  image: '/karya-tulis-ilmiah.png', 
-                  count: '40+ Event',
-                  participants: '2.2K+ Peserta'
-                },
-                { 
-                  title: 'Poster', 
-                  image: '/poster.png', 
-                  count: '25+ Ajang',
-                  participants: '1.5K+ Peserta'
-                },
-              ].map((item, index) => (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+              {categories.map((category, index) => (
                 <div 
-                  key={index} 
-                  className="bg-white rounded-lg md:rounded-xl p-3 text-gray-900 transition-all duration-300 cursor-pointer shadow-md border border-gray-200 hover:scale-105 hover:shadow-lg hover:border-blue-300 group"
+                  key={category.id} 
+                  className="bg-white rounded-lg md:rounded-xl p-4 text-gray-900 transition-all duration-300 cursor-pointer shadow-md border border-gray-200 hover:scale-105 hover:shadow-lg hover:border-blue-300 group text-center"
                 >
-                  <div className="h-20 sm:h-24 md:h-28 w-full bg-gray-100 rounded-lg mb-2 overflow-hidden relative">
-                    <Image
-                      src={item.image}
-                      alt={item.title}
-                      fill
-                      className="rounded-lg object-cover transition-all duration-500 group-hover:scale-110"
-                    />
-                    <div className="absolute inset-0 bg-blue-600 opacity-0 group-hover:opacity-10 transition-all duration-300 rounded-lg"></div>
+                  <div className="bg-blue-100 p-3 rounded-lg mb-3 transition-all duration-300 group-hover:bg-blue-600 group-hover:scale-110 mx-auto w-fit">
+                    <div className="text-blue-600 transition-all duration-300 group-hover:text-white">
+                      {category.icon}
+                    </div>
                   </div>
                   <div className="space-y-1">
-                    <p className="font-bold text-gray-900 text-sm sm:text-base transition-all duration-300 group-hover:text-blue-700">{item.title}</p>
-                    <div className="flex justify-between items-center text-xs sm:text-sm">
-                      <span className="text-blue-600 font-semibold transition-all duration-300 group-hover:text-blue-800">{item.count}</span>
-                      <span className="text-gray-600 transition-all duration-300 group-hover:text-gray-800">{item.participants}</span>
-                    </div>
+                    <p className="font-bold text-gray-900 text-sm transition-all duration-300 group-hover:text-blue-700">{category.name}</p>
+                    <span className="text-blue-600 text-xs font-semibold transition-all duration-300 group-hover:text-blue-800">
+                      {courses.filter(course => category.id === 'all' || course.category === category.id).length}+ Kelas
+                    </span>
                   </div>
                 </div>
               ))}
+            </div>
+          </section>
+
+          {/* Kelas Populer */}
+          <section className="w-full max-w-7xl mx-auto">
+            <div className="text-center mb-6 md:mb-8">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-3 md:mb-4">
+                Kelas Populer
+              </h2>
+              <p className="text-gray-700 max-w-2xl mx-auto text-sm sm:text-base">
+                Temukan kelas terpopuler yang sedang banyak diminati oleh mahasiswa
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              {courses.slice(0, 3).map((course) => (
+                <Link href={`/elearning/${course.id}`} key={course.id}>
+                  <div className="bg-white rounded-lg md:rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 border border-gray-200 group hover:scale-105 cursor-pointer">
+                    <div className="relative h-40 sm:h-44 md:h-48 overflow-hidden">
+                      <Image
+                        src={course.image}
+                        alt={course.title}
+                        width={400}
+                        height={200}
+                        className="w-full h-full object-cover transition-all duration-500 group-hover:scale-110"
+                      />
+                      {course.featured && (
+                        <div className="absolute top-2 left-2 bg-yellow-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
+                          Featured
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                        <button className="bg-white text-blue-600 p-2 md:p-3 rounded-full hover:bg-blue-50 transition-colors">
+                          <Eye className="w-5 h-5 md:w-6 md:h-6" />
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div className="p-4 md:p-6 space-y-3 md:space-y-4">
+                      <div className="flex justify-between items-start">
+                        <span className="text-xs md:text-sm text-blue-700 font-semibold bg-blue-100 px-2 py-1 md:px-3 md:py-1 rounded-full">
+                          {course.category.charAt(0).toUpperCase() + course.category.slice(1)}
+                        </span>
+                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                          course.level === 'Pemula' ? 'bg-green-100 text-green-700' :
+                          course.level === 'Menengah' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-red-100 text-red-700'
+                        }`}>
+                          {course.level}
+                        </span>
+                      </div>
+
+                      <h3 className="text-base md:text-lg font-bold text-gray-800 leading-tight group-hover:text-blue-700 transition-colors">
+                        {course.title}
+                      </h3>
+
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <span className="font-medium text-xs md:text-sm">{course.instructor}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs md:text-sm text-gray-600">
+                        <div className="flex items-center gap-3 md:gap-4">
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-3 h-3 md:w-4 md:h-4" />
+                            <span>{course.duration}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Users className="w-3 h-3 md:w-4 md:h-4" />
+                            <span>{course.participants}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Star className="w-3 h-3 md:w-4 md:h-4 text-yellow-400 fill-current" />
+                          <span className="font-semibold">{course.rating}</span>
+                        </div>
+                      </div>
+
+                      <button className="w-full bg-blue-700 text-white py-2 md:py-3 rounded-lg md:rounded-xl font-semibold transition-all duration-300 hover:bg-blue-800 hover:scale-105 active:scale-95 flex items-center justify-center gap-2 text-sm md:text-base">
+                        <Eye className="w-3 h-3 md:w-4 md:h-4" />
+                        Lihat Detail Kelas
+                      </button>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+
+            <div className="text-center mt-8">
+              <Link href="/elearning">
+                <button className="bg-blue-600 text-white px-6 py-3 rounded-lg md:rounded-xl font-semibold transition-all duration-300 hover:bg-blue-700 hover:scale-105 active:scale-95 flex items-center gap-2 justify-center mx-auto">
+                  Lihat Semua Kelas
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </Link>
             </div>
           </section>
 
@@ -343,52 +506,6 @@ export default function Home() {
             </div>
           </section>
 
-          {/* Course Section - Daftar Course (E-Learning) */}
-          <section className="w-full max-w-7xl mx-auto">
-            <div className="text-center mb-6 md:mb-8">
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-3 md:mb-4">
-                Daftar Course E-Learning
-              </h2>
-              <p className="text-gray-700 max-w-2xl mx-auto text-sm sm:text-base">
-                Temukan berbagai course menarik untuk mengembangkan diri dan keterampilanmu
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredCourses.map((course) => (
-                <Link href={`/elearning/${course.id}`} key={course.id}> {/* Ganti div card dengan Link */}
-                  <div className="bg-white rounded-lg md:rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 border border-gray-200 group hover:scale-105 cursor-pointer">
-                    <div className="relative h-40 sm:h-44 md:h-48 overflow-hidden">
-                      <Image
-                        src={course.image}
-                        alt={course.title}
-                        width={400}
-                        height={200}
-                        className="w-full h-full object-cover transition-all duration-500 group-hover:scale-110"
-                      />
-                      {course.featured && (
-                        <div className="absolute top-2 left-2 bg-yellow-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
-                          Featured
-                        </div>
-                      )}
-                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                        <button className="bg-white text-blue-600 p-2 md:p-3 rounded-full hover:bg-blue-50 transition-colors">
-                          <Play className="w-5 h-5 md:w-6 md:h-6" fill="currentColor" />
-                        </button>
-                      </div>
-                    </div>
-                    
-                    <div className="p-4 md:p-6 space-y-3 md:space-y-4">
-                      {/* Konten card lainnya tetap sama */}
-                      <h3 className="text-lg font-semibold">{course.title}</h3>
-                      <p className="text-gray-600">{course.description}</p>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </section>
-
           {/* CTA Section */}
           <section className="w-full max-w-7xl mx-auto">
             <div className="bg-blue-600 rounded-xl md:rounded-2xl p-6 sm:p-8 md:p-10 text-white text-center transition-all duration-300 hover:shadow-2xl">
@@ -399,13 +516,17 @@ export default function Home() {
                 Bergabunglah dengan ribuan mahasiswa lainnya yang telah meraih prestasi melalui platform kami.
               </p>
               <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center">
-                <button className="bg-white text-blue-700 px-5 sm:px-6 py-2 sm:py-3 rounded-lg font-semibold transition-all duration-300 hover:scale-105 hover:shadow-lg active:scale-95 flex items-center gap-2 justify-center text-sm sm:text-base group">
-                  Daftar Sekarang
-                  <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 transition-all duration-300 group-hover:translate-x-1" />
-                </button>
-                <button className="border border-white text-white px-5 sm:px-6 py-2 sm:py-3 rounded-lg font-semibold transition-all duration-300 hover:scale-105 hover:bg-white hover:text-blue-600 active:scale-95 text-sm sm:text-base">
-                  Lihat Jadwal Lomba
-                </button>
+                <Link href="/elearning">
+                  <button className="bg-white text-blue-700 px-5 sm:px-6 py-2 sm:py-3 rounded-lg font-semibold transition-all duration-300 hover:scale-105 hover:shadow-lg active:scale-95 flex items-center gap-2 justify-center text-sm sm:text-base group">
+                    Jelajahi Kelas
+                    <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 transition-all duration-300 group-hover:translate-x-1" />
+                  </button>
+                </Link>
+                <Link href="/pricing">
+                  <button className="border border-white text-white px-5 sm:px-6 py-2 sm:py-3 rounded-lg font-semibold transition-all duration-300 hover:scale-105 hover:bg-white hover:text-blue-600 active:scale-95 text-sm sm:text-base">
+                    Lihat Paket Harga
+                  </button>
+                </Link>
               </div>
             </div>
           </section>

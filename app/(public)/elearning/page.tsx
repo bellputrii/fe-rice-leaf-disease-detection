@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import LayoutNavbar from '@/components/public/LayoutNavbar'
-import { CheckCircle, Play, Users, Clock, BookOpen, Star, ArrowRight, Video, FileText, Award } from 'lucide-react'
+import { CheckCircle, Play, Users, Clock, BookOpen, Star, ArrowRight, Video, FileText, Award, Eye, ChevronDown } from 'lucide-react'
 import Footer from '@/components/public/Footer'
+import { useRouter } from 'next/navigation'
 
 interface Course {
   id: number
@@ -21,15 +22,33 @@ interface Course {
 
 interface ApiResponse {
   success: boolean
-  data: any // Kita akan debug struktur sebenarnya
+  data: {
+    classes: Array<{
+      id: number
+      name: string
+      description: string
+      image_path: string
+      categoryId: number
+      image_path_relative: string
+    }>
+    meta: {
+      totalItems: number
+      itemsPerPage: number
+      totalPages: number
+      currentPage: number
+    }
+  }
   message?: string
 }
 
 export default function ELearningPage() {
+  const router = useRouter()
   const [activeCategory, setActiveCategory] = useState('all')
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showAllCourses, setShowAllCourses] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   const categories = [
     { id: 'all', name: 'Semua Kursus' },
@@ -39,67 +58,176 @@ export default function ELearningPage() {
     { id: 'design', name: 'Desain' }
   ]
 
-  // Fetch data courses dari API
+  // Data untuk paket berlangganan - disesuaikan dengan konteks elearning
+  const plans = [
+    {
+      name: "Paket 1 Bulan",
+      originalPrice: "Rp 100.000",
+      price: "Rp 30.000",
+      discount: "70%",
+      duration: "1 Bulan",
+      features: [
+        "Akses ke SEMUA kursus dan materi",
+        "Download modul PDF eksklusif",
+        "Grup diskusi komunitas",
+        "Sertifikat penyelesaian kursus",
+        "Update kursus berkala",
+        "Forum tanya jawab"
+      ],
+      buttonText: "Pilih Paket 1 Bulan",
+      popular: false,
+      link: "https://link.id/ambilprestasi-elearning-1bulan"
+    },
+    {
+      name: "Paket 2 Bulan",
+      originalPrice: "Rp 200.000",
+      price: "Rp 60.000",
+      discount: "70%",
+      duration: "2 Bulan",
+      features: [
+        "Akses ke SEMUA kursus dan materi",
+        "Download modul PDF eksklusif",
+        "Grup diskusi komunitas",
+        "Sertifikat penyelesaian kursus",
+        "Update kursus berkala",
+        "Forum tanya jawab",
+        "Priority support",
+        "Video rekaman materi"
+      ],
+      buttonText: "Pilih Paket 2 Bulan",
+      popular: true,
+      link: "https://link.id/ambilprestasi-elearning-2bulan"
+    },
+    {
+      name: "Paket 3 Bulan",
+      originalPrice: "Rp 300.000",
+      price: "Rp 90.000",
+      discount: "70%",
+      duration: "3 Bulan",
+      features: [
+        "Akses ke SEMUA kursus dan materi",
+        "Download modul PDF eksklusif",
+        "Grup diskusi komunitas",
+        "Sertifikat penyelesaian kursus",
+        "Update kursus berkala",
+        "Forum tanya jawab",
+        "Priority support",
+        "Video rekaman materi",
+        "Personal learning path",
+        "Assessment perkembangan belajar"
+      ],
+      buttonText: "Pilih Paket 3 Bulan",
+      popular: false,
+      link: "https://link.id/ambilprestasi-elearning-3bulan"
+    }
+  ]
+
+  // Data testimonials - disesuaikan dengan konteks elearning
+  const testimonials = [
+    {
+      text: "Dengan paket berlangganan, saya bisa akses semua kursus dan materi pembelajaran. Sangat membantu persiapan lomba!",
+      name: "Nina, Mahasiswa Psikologi",
+      role: "Peserta Program 2 Bulan",
+      rating: 5
+    },
+    {
+      text: "Materi kursusnya lengkap dan selalu update. Pembelajaran jadi lebih terstruktur dan mudah dipahami.",
+      name: "Dimas, Fresh Graduate",
+      role: "Peserta Program 3 Bulan",
+      rating: 5
+    },
+    {
+      text: "Harga sangat terjangkau untuk akses seluas ini. Saya bisa belajar semua topik yang saya butuhkan untuk kompetisi.",
+      name: "Rani, Pegawai Swasta",
+      role: "Peserta Program 1 Bulan",
+      rating: 5
+    }
+  ]
+
+  // Fungsi untuk navigasi ke halaman detail kursus
+  const handleViewCourseDetail = (courseId: number) => {
+    router.push(`/elearning/${courseId}`)
+  }
+
+  // Fungsi untuk navigasi ke halaman pricing
+  const handleGoToPricing = () => {
+    router.push('/pricing')
+  }
+
+  // Fungsi untuk handle pemilihan paket
+  const handlePackageSelect = (link: string) => {
+    window.open(link, '_blank', 'noopener,noreferrer')
+  }
+
+  // Fungsi untuk handle show more courses
+  const handleShowMoreCourses = () => {
+    if (!isAuthenticated) {
+      router.push('/login')
+      return
+    }
+    setShowAllCourses(true)
+  }
+
+  // Fetch data courses dari API dengan struktur yang rapi
   useEffect(() => {
     const fetchCourses = async () => {
       try {
         setLoading(true)
-        const myHeaders = new Headers()
-        myHeaders.append("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZTQzMjM0NWEtMTllOS00MTZkLThiMjMtZDU5Njg0NWY0NjU0IiwiaWF0IjoxNzYxOTgwNDgwLCJleHAiOjE3NjIwNjY4ODB9.gmY2NmzF6hEXlMmuth8OIlKSl_eku6wOosaCozhp4nQ")
-
-        const requestOptions = {
-          method: "GET",
-          headers: myHeaders,
-          redirect: "follow" as RequestRedirect
+        
+        // Ambil token dari localStorage
+        const token = localStorage.getItem("token")
+        
+        if (!token) {
+          setError('Token tidak ditemukan. Silakan login kembali.')
+          setLoading(false)
+          setIsAuthenticated(false)
+          return
         }
 
-        console.log('Fetching courses from API...')
-        const response = await fetch("http://localhost:3001/api/v1/classes", requestOptions)
-        
+        setIsAuthenticated(true)
+
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/public/classes`, {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+          },
+          redirect: "follow" as RequestRedirect
+        })
+
         if (!response.ok) {
+          if (response.status === 401) {
+            // Token expired atau invalid
+            localStorage.removeItem("token")
+            setError('Sesi telah berakhir. Silakan login kembali.')
+            setIsAuthenticated(false)
+            setTimeout(() => router.push('/login'), 2000)
+            return
+          }
           throw new Error(`HTTP error! status: ${response.status}`)
         }
         
         const result: ApiResponse = await response.json()
-        console.log('API Response:', result) // Debug: lihat struktur response
         
-        // Handle berbagai kemungkinan struktur response
-        let coursesData = []
-        
-        if (Array.isArray(result)) {
-          // Jika response langsung array
-          coursesData = result
-        } else if (result && Array.isArray(result.data)) {
-          // Jika response memiliki property data yang array
-          coursesData = result.data
-        } else if (result && result.data && typeof result.data === 'object') {
-          // Jika data adalah object, convert ke array
-          coursesData = Object.values(result.data)
+        if (result.success && result.data.classes) {
+          // Transform data dari API ke format yang diharapkan komponen
+          const transformedCourses = result.data.classes.map((classItem, index) => ({
+            id: classItem.id,
+            category: mapCategory(classItem.categoryId),
+            title: classItem.name,
+            image: classItem.image_path_relative || '/placeholder.png',
+            duration: `${Math.floor(Math.random() * 6) + 3} Jam`,
+            participants: (Math.floor(Math.random() * 400) + 100).toString(),
+            level: ['Pemula', 'Menengah', 'Lanjutan'][index % 3],
+            rating: parseFloat((4.5 + Math.random() * 0.5).toFixed(1)),
+            instructor: getDefaultInstructor(index),
+            featured: index < 2
+          }))
+
+          setCourses(transformedCourses)
+          setError(null)
         } else {
-          // Fallback ke data statis
-          console.warn('Unexpected API response structure, using fallback data')
-          setCourses(getFallbackCourses())
-          setError('Struktur data tidak sesuai. Menampilkan data contoh.')
-          return
+          throw new Error(result.message || 'Gagal memuat data kelas')
         }
-
-        // Transform data dari API ke format yang diharapkan komponen
-        const transformedCourses = coursesData.map((item: any, index: number) => ({
-          id: item.id || item.class_id || index + 1,
-          category: mapCategory(item.category || item.type || getDefaultCategory(index)),
-          title: item.title || item.name || item.class_name || `Kursus ${index + 1}`,
-          image: item.image || item.image_url || getDefaultImage(index),
-          duration: item.duration || item.total_duration || `${Math.floor(Math.random() * 6) + 3} Jam`,
-          participants: item.participants?.toString() || item.enrolled_count?.toString() || (Math.floor(Math.random() * 400) + 100).toString(),
-          level: item.level || item.difficulty || ['Pemula', 'Menengah', 'Lanjutan'][index % 3],
-          rating: item.rating || item.average_rating || parseFloat((4.5 + Math.random() * 0.5).toFixed(1)),
-          instructor: item.instructor || item.teacher_name || item.creator || getDefaultInstructor(index),
-          featured: item.featured || index < 2
-        }))
-
-        console.log('Transformed courses:', transformedCourses) // Debug
-        setCourses(transformedCourses)
-        setError(null)
       } catch (err) {
         console.error('Error fetching courses:', err)
         setError('Gagal memuat data kursus. Silakan coba lagi.')
@@ -111,35 +239,17 @@ export default function ELearningPage() {
     }
 
     fetchCourses()
-  }, [])
+  }, [router])
 
   // Helper functions untuk transform data
-  const mapCategory = (category: string): string => {
-    if (!category) return 'essay'
-    
-    const categoryMap: { [key: string]: string } = {
-      'essay': 'essay',
-      'business': 'business',
-      'research': 'research',
-      'design': 'design',
-      'writing': 'essay',
-      'business-plan': 'business',
-      'startup': 'business',
-      'scientific': 'research',
-      'penelitian': 'research',
-      'desain': 'design'
+  const mapCategory = (categoryId: number): string => {
+    const categoryMap: { [key: number]: string } = {
+      1: 'essay',
+      2: 'business',
+      3: 'research',
+      4: 'design'
     }
-    return categoryMap[category.toLowerCase()] || 'essay'
-  }
-
-  const getDefaultCategory = (index: number): string => {
-    const categories = ['essay', 'business', 'research', 'design']
-    return categories[index % categories.length]
-  }
-
-  const getDefaultImage = (index: number): string => {
-    const images = ['/essay.png', '/business-plan.png', '/karya-tulis-ilmiah.png', '/poster.png']
-    return images[index % images.length]
+    return categoryMap[categoryId] || 'essay'
   }
 
   const getDefaultInstructor = (index: number): string => {
@@ -201,12 +311,60 @@ export default function ELearningPage() {
       level: 'Pemula',
       rating: 4.6,
       instructor: 'Maya Desain'
+    },
+    {
+      id: 5,
+      category: 'essay',
+      title: 'Teknik Menulis Essay Beasiswa',
+      image: '/essay.png',
+      duration: '7 Jam',
+      participants: '290',
+      level: 'Menengah',
+      rating: 4.8,
+      instructor: 'Dr. Sarah Wijaya'
+    },
+    {
+      id: 6,
+      category: 'business',
+      title: 'Analisis Pasar untuk Business Plan',
+      image: '/business-plan.png',
+      duration: '5 Jam',
+      participants: '320',
+      level: 'Lanjutan',
+      rating: 4.7,
+      instructor: 'Prof. Ahmad Rahman'
+    },
+    {
+      id: 7,
+      category: 'research',
+      title: 'Metodologi Penelitian Kualitatif',
+      image: '/karya-tulis-ilmiah.png',
+      duration: '6 Jam',
+      participants: '270',
+      level: 'Menengah',
+      rating: 4.6,
+      instructor: 'Dr. Lisa Santoso'
+    },
+    {
+      id: 8,
+      category: 'design',
+      title: 'Prinsip Desain Visual yang Efektif',
+      image: '/poster.png',
+      duration: '4 Jam',
+      participants: '380',
+      level: 'Pemula',
+      rating: 4.5,
+      instructor: 'Maya Desain'
     }
   ]
 
+  // Filter courses berdasarkan kategori dan batasi tampilan
   const filteredCourses = activeCategory === 'all' 
     ? courses 
     : courses.filter(course => course.category === activeCategory)
+
+  // Tampilkan hanya 6 kursus pertama jika belum klik show more
+  const displayedCourses = showAllCourses ? filteredCourses : filteredCourses.slice(0, 6)
 
   const stats = [
     { value: '180+', label: 'Video Pembelajaran', icon: <Video className="w-5 h-5 sm:w-7 sm:h-7" /> },
@@ -242,9 +400,9 @@ export default function ELearningPage() {
         <div className="flex flex-col gap-12 md:gap-16 lg:gap-20 px-4 sm:px-6 lg:px-8 pt-16 md:pt-20">
           {/* Hero Section */}
           <section className="w-full max-w-7xl mx-auto">
-            <div className="grid grid-cols-1 lg:grid-cols-2 items-center gap-6 md:gap-8 bg-blue-600 rounded-xl md:rounded-2xl lg:rounded-3xl p-6 md:p-8 lg:p-12 text-white">
+            <div className="grid grid-cols-1 lg:grid-cols-2 items-center gap-6 md:gap-8 bg-blue-700 rounded-xl md:rounded-2xl lg:rounded-3xl p-6 md:p-8 lg:p-12 text-white">
               <div className="space-y-4 md:space-y-6 order-2 lg:order-1">
-                <div className="flex items-center gap-2 bg-blue-700 rounded-full px-3 py-1 md:px-4 md:py-2 w-fit">
+                <div className="flex items-center gap-2 bg-blue-600 rounded-full px-3 py-1 md:px-4 md:py-2 w-fit">
                   <BookOpen className="w-4 h-4" />
                   <span className="text-sm font-medium">E-Learning Platform</span>
                 </div>
@@ -279,8 +437,11 @@ export default function ELearningPage() {
                     Jelajahi Kursus
                     <ArrowRight className="w-4 h-4" />
                   </button>
-                  <button className="border border-white text-white px-6 py-3 md:px-8 md:py-4 rounded-lg md:rounded-xl font-semibold transition-all duration-300 hover:scale-105 active:scale-95 hover:bg-white hover:text-blue-600">
-                    Lihat Preview
+                  <button 
+                    onClick={() => document.getElementById('packages-section')?.scrollIntoView({ behavior: 'smooth' })}
+                    className="border-2 border-white text-white px-6 py-3 md:px-8 md:py-4 rounded-lg md:rounded-xl font-semibold transition-all duration-300 hover:scale-105 active:scale-95 hover:bg-white hover:text-blue-700"
+                  >
+                    Lihat Paket Harga
                   </button>
                 </div>
               </div>
@@ -290,9 +451,7 @@ export default function ELearningPage() {
                   <Image
                     src="/e-learning.png"
                     alt="E-Learning"
-                    width={500}
-                    height={400}
-                    className="rounded-xl md:rounded-2xl object-cover shadow-lg"
+                    className="rounded-xl md:rounded-2xl object-cover shadow-lg w-full h-auto"
                   />
                   <div className="absolute -bottom-3 -left-3 bg-white rounded-xl md:rounded-2xl p-3 md:p-4 shadow-md">
                     <div className="flex items-center gap-2 md:gap-3">
@@ -319,7 +478,7 @@ export default function ELearningPage() {
                   className="bg-white rounded-lg md:rounded-xl p-4 md:p-6 shadow-md hover:shadow-lg transition-all duration-300 border border-gray-200 group hover:scale-105 cursor-pointer"
                 >
                   <div className="flex items-center gap-3 md:gap-4">
-                    <div className="bg-blue-100 p-2 md:p-3 rounded-lg text-blue-600 transition-all duration-300 group-hover:bg-blue-600 group-hover:text-white">
+                    <div className="bg-blue-100 p-2 md:p-3 rounded-lg text-blue-700 transition-all duration-300 group-hover:bg-blue-700 group-hover:text-white">
                       {stat.icon}
                     </div>
                     <div>
@@ -347,10 +506,13 @@ export default function ELearningPage() {
               {categories.map((category) => (
                 <button
                   key={category.id}
-                  onClick={() => setActiveCategory(category.id)}
+                  onClick={() => {
+                    setActiveCategory(category.id)
+                    setShowAllCourses(false) // Reset show all ketika ganti kategori
+                  }}
                   className={`px-4 py-2 md:px-6 md:py-3 rounded-lg md:rounded-xl font-medium transition-all duration-200 text-sm md:text-base ${
                     activeCategory === category.id
-                      ? 'bg-blue-600 text-white shadow-md'
+                      ? 'bg-blue-700 text-white shadow-md'
                       : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
                   }`}
                 >
@@ -362,7 +524,7 @@ export default function ELearningPage() {
             {/* Loading State */}
             {loading && (
               <div className="flex justify-center items-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700"></div>
                 <span className="ml-3 text-gray-600">Memuat kursus...</span>
               </div>
             )}
@@ -372,85 +534,136 @@ export default function ELearningPage() {
               <div className="text-center py-8">
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 max-w-md mx-auto">
                   <p className="text-yellow-700 font-medium">{error}</p>
+                  {error.includes('login kembali') && (
+                    <button 
+                      onClick={() => router.push('/login')}
+                      className="mt-3 bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition-colors"
+                    >
+                      Login Kembali
+                    </button>
+                  )}
                 </div>
               </div>
             )}
 
             {/* Kursus Grid */}
-            {!loading && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8">
-                {filteredCourses.map((course) => (
-                  <div
-                    key={course.id}
-                    className="bg-white rounded-lg md:rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 border border-gray-200 group hover:scale-105 cursor-pointer"
-                  >
-                    <div className="relative h-40 sm:h-44 md:h-48 overflow-hidden">
-                      <Image
-                        src={course.image}
-                        alt={course.title}
-                        width={400}
-                        height={200}
-                        className="w-full h-full object-cover transition-all duration-500 group-hover:scale-110"
-                      />
-                      {course.featured && (
-                        <div className="absolute top-2 left-2 bg-yellow-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
-                          Featured
+            {!loading && !error && (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8">
+                  {displayedCourses.map((course) => (
+                    <div
+                      key={course.id}
+                      className="bg-white rounded-lg md:rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 border border-gray-200 group hover:scale-105 cursor-pointer"
+                    >
+                      <div className="relative h-40 sm:h-44 md:h-48 overflow-hidden">
+                        <Image
+                          src={course.image}
+                          alt={course.title}
+                          className="w-full h-full object-cover transition-all duration-500 group-hover:scale-110"
+                        />
+                        {course.featured && (
+                          <div className="absolute top-2 left-2 bg-yellow-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
+                            Featured
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                          <button 
+                            onClick={() => handleViewCourseDetail(course.id)}
+                            className="bg-white text-blue-700 p-2 md:p-3 rounded-full hover:bg-blue-50 transition-colors"
+                          >
+                            <Eye className="w-5 h-5 md:w-6 md:h-6" />
+                          </button>
                         </div>
-                      )}
-                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                        <button className="bg-white text-blue-600 p-2 md:p-3 rounded-full hover:bg-blue-50 transition-colors">
-                          <Play className="w-5 h-5 md:w-6 md:h-6" fill="currentColor" />
+                      </div>
+                      
+                      <div className="p-4 md:p-6 space-y-3 md:space-y-4">
+                        <div className="flex justify-between items-start">
+                          <span className="text-xs md:text-sm text-blue-700 font-semibold bg-blue-100 px-2 py-1 md:px-3 md:py-1 rounded-full">
+                            {course.category.charAt(0).toUpperCase() + course.category.slice(1)}
+                          </span>
+                          <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                            course.level === 'Pemula' ? 'bg-green-100 text-green-700' :
+                            course.level === 'Menengah' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-red-100 text-red-700'
+                          }`}>
+                            {course.level}
+                          </span>
+                        </div>
+
+                        <h3 className="text-base md:text-lg font-bold text-gray-800 leading-tight group-hover:text-blue-700 transition-colors">
+                          {course.title}
+                        </h3>
+
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <span className="font-medium text-xs md:text-sm">{course.instructor}</span>
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs md:text-sm text-gray-600">
+                          <div className="flex items-center gap-3 md:gap-4">
+                            <div className="flex items-center gap-1">
+                              <Clock className="w-3 h-3 md:w-4 md:h-4" />
+                              <span>{course.duration}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Users className="w-3 h-3 md:w-4 md:h-4" />
+                              <span>{course.participants}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Star className="w-3 h-3 md:w-4 md:h-4 text-yellow-400 fill-current" />
+                            <span className="font-semibold">{course.rating}</span>
+                          </div>
+                        </div>
+
+                        <button 
+                          onClick={() => handleViewCourseDetail(course.id)}
+                          className="w-full bg-blue-700 text-white py-2 md:py-3 rounded-lg md:rounded-xl font-semibold transition-all duration-300 hover:bg-blue-800 hover:scale-105 active:scale-95 flex items-center justify-center gap-2 text-sm md:text-base"
+                        >
+                          <Eye className="w-3 h-3 md:w-4 md:h-4" />
+                          Lihat Detail Kelas
                         </button>
                       </div>
                     </div>
-                    
-                    <div className="p-4 md:p-6 space-y-3 md:space-y-4">
-                      <div className="flex justify-between items-start">
-                        <span className="text-xs md:text-sm text-blue-700 font-semibold bg-blue-100 px-2 py-1 md:px-3 md:py-1 rounded-full">
-                          {course.category.charAt(0).toUpperCase() + course.category.slice(1)}
-                        </span>
-                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                          course.level === 'Pemula' ? 'bg-green-100 text-green-700' :
-                          course.level === 'Menengah' ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-red-100 text-red-700'
-                        }`}>
-                          {course.level}
-                        </span>
-                      </div>
+                  ))}
+                </div>
 
-                      <h3 className="text-base md:text-lg font-bold text-gray-800 leading-tight group-hover:text-blue-700 transition-colors">
-                        {course.title}
+                {/* Show More Button */}
+                {!showAllCourses && filteredCourses.length > 6 && (
+                  <div className="text-center mt-8 md:mt-12">
+                    <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl md:rounded-2xl p-8 max-w-2xl mx-auto">
+                      <h3 className="text-white text-lg md:text-xl font-bold mb-3">
+                        {isAuthenticated ? 'Temukan Lebih Banyak Kursus' : 'Login untuk Mengakses Semua Kursus'}
                       </h3>
-
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <span className="font-medium text-xs md:text-sm">{course.instructor}</span>
-                      </div>
-
-                      <div className="flex items-center justify-between text-xs md:text-sm text-gray-600">
-                        <div className="flex items-center gap-3 md:gap-4">
-                          <div className="flex items-center gap-1">
-                            <Clock className="w-3 h-3 md:w-4 md:h-4" />
-                            <span>{course.duration}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Users className="w-3 h-3 md:w-4 md:h-4" />
-                            <span>{course.participants}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Star className="w-3 h-3 md:w-4 md:h-4 text-yellow-400 fill-current" />
-                          <span className="font-semibold">{course.rating}</span>
-                        </div>
-                      </div>
-
-                      <button className="w-full bg-blue-600 text-white py-2 md:py-3 rounded-lg md:rounded-xl font-semibold transition-all duration-300 hover:bg-blue-700 hover:scale-105 active:scale-95 flex items-center justify-center gap-2 text-sm md:text-base">
-                        Mulai Belajar
-                        <ArrowRight className="w-3 h-3 md:w-4 md:h-4" />
+                      <p className="text-blue-100 mb-6 text-sm md:text-base">
+                        {isAuthenticated 
+                          ? `Masih ada ${filteredCourses.length - 6} kursus lainnya yang menunggu untuk dipelajari!`
+                          : 'Login untuk mengakses semua kursus premium dan fitur lengkap lainnya.'
+                        }
+                      </p>
+                      <button 
+                        onClick={handleShowMoreCourses}
+                        className="bg-white text-blue-700 px-6 py-3 md:px-8 md:py-4 rounded-lg md:rounded-xl font-semibold transition-all duration-300 hover:scale-105 active:scale-95 shadow-md hover:shadow-lg flex items-center gap-2 justify-center mx-auto"
+                      >
+                        <ChevronDown className="w-4 h-4 md:w-5 md:h-5" />
+                        {isAuthenticated ? 'Tampilkan Semua Kursus' : 'Login Sekarang'}
                       </button>
                     </div>
                   </div>
-                ))}
-              </div>
+                )}
+
+                {/* Show Less Button */}
+                {showAllCourses && filteredCourses.length > 6 && (
+                  <div className="text-center mt-8">
+                    <button 
+                      onClick={() => setShowAllCourses(false)}
+                      className="bg-gray-100 text-gray-700 px-6 py-3 md:px-8 md:py-4 rounded-lg md:rounded-xl font-semibold transition-all duration-300 hover:bg-gray-200 hover:scale-105 active:scale-95 flex items-center gap-2 justify-center mx-auto"
+                    >
+                      <ChevronDown className="w-4 h-4 md:w-5 md:h-5 transform rotate-180" />
+                      Tampilkan Lebih Sedikit
+                    </button>
+                  </div>
+                )}
+              </>
             )}
 
             {/* Empty State */}
@@ -467,9 +680,132 @@ export default function ELearningPage() {
             )}
           </section>
 
+          {/* Pricing Section - Ditambahkan dari ementoring */}
+          <section id="packages-section" className="w-full max-w-7xl mx-auto">
+            <div className="text-center mb-8 md:mb-10">
+              <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-blue-800 mb-3 md:mb-4">
+                Paket Berlangganan E-Learning
+              </h2>
+              <p className="text-gray-600 text-sm md:text-base max-w-2xl mx-auto px-4">
+                Akses semua kursus premium dengan paket berlangganan bulanan. Belajar tanpa batas dan raih prestasi terbaikmu!
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+              {plans.map((plan, index) => (
+                <div
+                  key={index}
+                  className={`bg-white rounded-xl md:rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border-2 ${
+                    plan.popular 
+                      ? 'border-blue-600 relative transform scale-105' 
+                      : 'border-gray-200 hover:scale-105'
+                  } group`}
+                >
+                  {plan.popular && (
+                    <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                      <span className="bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-semibold shadow-lg">
+                        Paling Populer
+                      </span>
+                    </div>
+                  )}
+                  
+                  <div className="text-center mb-6">
+                    <h3 className="text-xl font-bold text-gray-800 mb-2">{plan.name}</h3>
+                    <div className="flex flex-col items-center gap-2 mb-2">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-2xl line-through text-gray-400">{plan.originalPrice}</span>
+                        <span className="text-3xl font-bold text-blue-600">{plan.price}</span>
+                      </div>
+                      <span className="bg-red-100 text-red-600 px-2 py-1 rounded-full text-sm font-semibold">
+                        Hemat {plan.discount}
+                      </span>
+                    </div>
+                    <p className="text-gray-600 font-semibold">{plan.duration} Akses Penuh</p>
+                  </div>
+
+                  <div className="mb-4 p-3 bg-blue-50 rounded-lg text-center">
+                    <p className="text-blue-700 font-semibold text-sm">
+                      ✅ Akses ke SEMUA Kursus & Materi
+                    </p>
+                  </div>
+
+                  <ul className="space-y-3 mb-6">
+                    {plan.features.map((feature, idx) => (
+                      <li key={idx} className="flex items-center gap-3 text-gray-600">
+                        <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+                        <span className="text-sm">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <button 
+                    onClick={() => handlePackageSelect(plan.link)}
+                    className={`w-full py-3 rounded-xl font-semibold transition-all duration-200 ${
+                      plan.popular
+                        ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg hover:shadow-xl'
+                        : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                    }`}
+                  >
+                    {plan.buttonText}
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="text-center mt-8">
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4 max-w-2xl mx-auto">
+                <p className="text-green-700 font-semibold">
+                  💫 Spesial Diskon 70%! Harga normal Rp 100.000/bulan menjadi Rp 30.000/bulan
+                </p>
+                <p className="text-green-600 text-sm mt-1">
+                  Akses semua kursus, modul eksklusif, dan fitur premium lainnya
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Testimonials Section - Ditambahkan dari ementoring */}
+          <section className="w-full max-w-7xl mx-auto">
+            <div className="bg-gradient-to-br from-blue-700 to-blue-800 rounded-2xl md:rounded-3xl p-6 md:p-8 lg:p-12 text-white">
+              <div className="text-center mb-8 md:mb-10">
+                <h2 className="text-xl md:text-2xl lg:text-3xl font-bold mb-3 md:mb-4">
+                  Testimoni Peserta E-Learning
+                </h2>
+                <p className="text-blue-100 text-sm md:text-base max-w-2xl mx-auto px-4">
+                  Dengarkan pengalaman langsung dari peserta yang telah merasakan manfaat program berlangganan kami
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+                {testimonials.map((testimonial, index) => (
+                  <div
+                    key={index}
+                    className="bg-blue-600/50 rounded-xl md:rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 group hover:scale-105 backdrop-blur-sm"
+                  >
+                    <div className="flex gap-1 mb-4">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star 
+                          key={i} 
+                          className="w-4 h-4 text-yellow-400 fill-current" 
+                        />
+                      ))}
+                    </div>
+                    <p className="text-blue-100 italic mb-4 leading-relaxed text-sm md:text-base">
+                      &quot;{testimonial.text}&quot;
+                    </p>
+                    <div>
+                      <p className="font-semibold text-sm md:text-base">{testimonial.name}</p>
+                      <p className="text-blue-200 text-xs md:text-sm">{testimonial.role}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
           {/* Alur Pembelajaran */}
           <section className="w-full max-w-7xl mx-auto">
-            <div className="bg-blue-50 rounded-xl md:rounded-2xl lg:rounded-3xl p-6 md:p-8 lg:p-12">
+            <div className="bg-blue-100 rounded-xl md:rounded-2xl lg:rounded-3xl p-6 md:p-8 lg:p-12">
               <div className="text-center mb-8 md:mb-12">
                 <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 mb-3 md:mb-4">
                   Alur Pembelajaran
@@ -485,10 +821,10 @@ export default function ELearningPage() {
                     key={index}
                     className="bg-white rounded-lg md:rounded-xl p-4 md:p-6 shadow-md hover:shadow-lg transition-all duration-300 group hover:scale-105 text-center cursor-pointer"
                   >
-                    <div className="bg-blue-600 text-white w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-base md:text-lg font-bold mb-3 md:mb-4 mx-auto transition-all duration-300 group-hover:scale-110">
+                    <div className="bg-blue-700 text-white w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-base md:text-lg font-bold mb-3 md:mb-4 mx-auto transition-all duration-300 group-hover:scale-110">
                       {step.step}
                     </div>
-                    <div className="bg-blue-100 text-blue-600 p-2 md:p-3 rounded-lg w-fit mx-auto mb-3 md:mb-4 transition-all duration-300 group-hover:bg-blue-600 group-hover:text-white">
+                    <div className="bg-blue-200 text-blue-700 p-2 md:p-3 rounded-lg w-fit mx-auto mb-3 md:mb-4 transition-all duration-300 group-hover:bg-blue-700 group-hover:text-white">
                       {step.icon}
                     </div>
                     <h3 className="font-bold text-base md:text-lg mb-2 md:mb-3 text-gray-800">{step.title}</h3>
@@ -501,7 +837,7 @@ export default function ELearningPage() {
 
           {/* CTA Section */}
           <section className="w-full max-w-7xl mx-auto">
-            <div className="bg-blue-600 rounded-xl md:rounded-2xl lg:rounded-3xl p-6 md:p-8 lg:p-12 text-white text-center">
+            <div className="bg-blue-700 rounded-xl md:rounded-2xl lg:rounded-3xl p-6 md:p-8 lg:p-12 text-white text-center">
               <h2 className="text-xl md:text-2xl lg:text-3xl font-bold mb-3 md:mb-4">
                 Siap Mengembangkan Potensimu?
               </h2>
@@ -509,11 +845,17 @@ export default function ELearningPage() {
                 Bergabung dengan ribuan mahasiswa lainnya dan raih prestasi terbaik melalui program E-Learning kami.
               </p>
               <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center">
-                <button className="bg-white text-blue-700 px-6 py-3 md:px-8 md:py-4 rounded-lg md:rounded-xl font-semibold transition-all duration-300 hover:scale-105 active:scale-95 shadow-md hover:shadow-lg flex items-center gap-2 justify-center text-sm md:text-base">
+                <button 
+                  onClick={() => document.getElementById('packages-section')?.scrollIntoView({ behavior: 'smooth' })}
+                  className="bg-white text-blue-700 px-6 py-3 md:px-8 md:py-4 rounded-lg md:rounded-xl font-semibold transition-all duration-300 hover:scale-105 active:scale-95 shadow-md hover:shadow-lg flex items-center gap-2 justify-center text-sm md:text-base"
+                >
                   <BookOpen className="w-4 h-4 md:w-5 md:h-5" />
-                  Mulai Belajar Sekarang
+                  Pilih Paket Belajar
                 </button>
-                <button className="border border-white text-white px-6 py-3 md:px-8 md:py-4 rounded-lg md:rounded-xl font-semibold transition-all duration-300 hover:scale-105 active:scale-95 hover:bg-white hover:text-blue-600 text-sm md:text-base">
+                <button 
+                  onClick={() => document.getElementById('courses-section')?.scrollIntoView({ behavior: 'smooth' })}
+                  className="border-2 border-white text-white px-6 py-3 md:px-8 md:py-4 rounded-lg md:rounded-xl font-semibold transition-all duration-300 hover:scale-105 active:scale-95 hover:bg-white hover:text-blue-700 text-sm md:text-base"
+                >
                   Lihat Semua Kursus
                 </button>
               </div>

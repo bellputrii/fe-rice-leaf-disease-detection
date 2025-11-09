@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import LayoutNavbar from '@/components/public/LayoutNavbar'
-import { ArrowLeft, Plus, Edit, Trash2, FileText, Video, File, Image as ImageIcon, BookOpen, Download, X, CheckCircle, XCircle, AlertTriangle, List } from 'lucide-react'
+import { ArrowLeft, Plus, Edit, Trash2, FileText, Video, File, Image as ImageIcon, BookOpen, Download, X, CheckCircle, XCircle, AlertTriangle, List, Info, Eye, Play, ExternalLink } from 'lucide-react'
 import Footer from '@/components/public/Footer'
 
 interface Material {
@@ -18,6 +18,13 @@ interface Material {
   order: number;
   createdAt?: string;
   updatedAt?: string;
+  xp?: number;
+  thumnail_path?: string;
+  video_path?: string;
+  materialFilePath?: string;
+  ringkasanPath?: string;
+  templatePath?: string;
+  sectionId?: number;
 }
 
 interface Section {
@@ -35,6 +42,12 @@ interface Class {
   categoryId: number;
 }
 
+interface ApiResponse {
+  success: boolean
+  data: any
+  message?: string
+}
+
 export default function MaterialsPage() {
   const params = useParams()
   const router = useRouter()
@@ -44,7 +57,8 @@ export default function MaterialsPage() {
   const [materials, setMaterials] = useState<Material[]>([])
   const [section, setSection] = useState<Section | null>(null)
   const [classData, setClassData] = useState<Class | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [showMaterialModal, setShowMaterialModal] = useState(false)
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null)
   const [materialForm, setMaterialForm] = useState({
@@ -68,6 +82,39 @@ export default function MaterialsPage() {
     materialTitle: ''
   })
 
+  // State untuk detail materi
+  const [showDetailModal, setShowDetailModal] = useState(false)
+  const [detailMaterial, setDetailMaterial] = useState<Material | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
+
+  // Konstanta untuk validasi
+  const VALIDATION_RULES = {
+    title: {
+      minLength: 10,
+      maxLength: 200
+    },
+    files: {
+      maxSize: 10 * 1024 * 1024, // 10MB
+      video: {
+        maxSize: 50 * 1024 * 1024, // 50MB untuk video
+        formats: ['.mp4', '.mov', '.avi', '.mkv']
+      },
+      materialFile: {
+        formats: ['.pdf', '.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx']
+      },
+      ringkasan: {
+        formats: ['.pdf']
+      },
+      template: {
+        formats: ['.pdf', '.doc', '.docx']
+      },
+      thumnail: {
+        maxSize: 5 * 1024 * 1024, // 5MB untuk gambar
+        formats: ['.jpg', '.jpeg', '.png', '.gif', '.webp']
+      }
+    }
+  }
+
   // Auto hide messages after 5 seconds
   useEffect(() => {
     if (messageSuccess || messageFailed) {
@@ -79,99 +126,193 @@ export default function MaterialsPage() {
     }
   }, [messageSuccess, messageFailed])
 
-  // Get auth token from localStorage
-  const getAuthToken = () => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('token') || ''
-    }
-    return ''
-  }
-
-  // Fetch section data
+  // Fetch section data dengan struktur yang konsisten
   const fetchSectionData = async () => {
     try {
-      const token = getAuthToken()
+      const token = localStorage.getItem("token")
+      
       if (!token) {
-        console.warn('No auth token found')
+        setError('Token tidak ditemukan. Silakan login kembali.')
         return
       }
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/classes/${classId}/sections/${sectionId}`, {
         method: "GET",
-        headers: { 
+        headers: {
           "Authorization": `Bearer ${token}`,
         },
+        redirect: "follow" as RequestRedirect
       })
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem("token")
+          setError('Sesi telah berakhir. Silakan login kembali.')
+          setTimeout(() => router.push('/login'), 2000)
+          return
+        }
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
       
-      if (!response.ok) throw new Error('Failed to fetch section data')
+      const result: ApiResponse = await response.json()
       
-      const result = await response.json()
       if (result.success) {
         setSection(result.data)
+        setError(null)
+      } else {
+        throw new Error(result.message || 'Gagal memuat data section')
       }
-    } catch (error) {
-      console.error('Error fetching section data:', error)
+    } catch (err) {
+      console.error('Error fetching section data:', err)
+      setError('Gagal memuat data section. Silakan coba lagi.')
       setMessageFailed('Gagal memuat data section')
     }
   }
 
-  // Fetch class data
+  // Fetch class data dengan struktur yang konsisten
   const fetchClassData = async () => {
     try {
-      const token = getAuthToken()
+      const token = localStorage.getItem("token")
+      
       if (!token) {
-        console.warn('No auth token found')
+        setError('Token tidak ditemukan. Silakan login kembali.')
         return
       }
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/classes/${classId}`, {
         method: "GET",
-        headers: { 
+        headers: {
           "Authorization": `Bearer ${token}`,
         },
+        redirect: "follow" as RequestRedirect
       })
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem("token")
+          setError('Sesi telah berakhir. Silakan login kembali.')
+          setTimeout(() => router.push('/login'), 2000)
+          return
+        }
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
       
-      if (!response.ok) throw new Error('Failed to fetch class data')
+      const result: ApiResponse = await response.json()
       
-      const result = await response.json()
       if (result.success) {
         setClassData(result.data)
+        setError(null)
+      } else {
+        throw new Error(result.message || 'Gagal memuat data kelas')
       }
-    } catch (error) {
-      console.error('Error fetching class data:', error)
+    } catch (err) {
+      console.error('Error fetching class data:', err)
+      setError('Gagal memuat data kelas. Silakan coba lagi.')
       setMessageFailed('Gagal memuat data kelas')
     }
   }
 
-  // Fetch materials - ENDPOINT YANG BENAR
+  // Fetch materials dengan struktur yang konsisten
   const fetchMaterials = async () => {
     setLoading(true)
     try {
-      const token = getAuthToken()
+      const token = localStorage.getItem("token")
+      
       if (!token) {
-        console.warn('No auth token found')
+        setError('Token tidak ditemukan. Silakan login kembali.')
+        setLoading(false)
         return
       }
 
-      // ENDPOINT: GET /classes/sections/{sectionId}/materials
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/classes/sections/${sectionId}/materials`, {
         method: "GET",
-        headers: { 
+        headers: {
           "Authorization": `Bearer ${token}`,
         },
+        redirect: "follow" as RequestRedirect
       })
-      
-      if (!response.ok) throw new Error('Failed to fetch materials')
-      
-      const result = await response.json()
-      if (result.success) {
-        setMaterials(result.data)
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem("token")
+          setError('Sesi telah berakhir. Silakan login kembali.')
+          setTimeout(() => router.push('/login'), 2000)
+          return
+        }
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
-    } catch (error) {
-      console.error('Error fetching materials:', error)
+      
+      const result: ApiResponse = await response.json()
+      
+      if (result.success) {
+        setMaterials(result.data || [])
+        setError(null)
+      } else {
+        throw new Error(result.message || 'Gagal memuat data materi')
+      }
+    } catch (err) {
+      console.error('Error fetching materials:', err)
+      setError('Gagal memuat data materi. Silakan coba lagi.')
       setMessageFailed('Gagal memuat data materi')
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Fetch detail materi
+  const fetchMaterialDetail = async (materialId: number) => {
+    setDetailLoading(true)
+    try {
+      const token = localStorage.getItem("token")
+      
+      if (!token) {
+        setMessageFailed('Token tidak ditemukan. Silakan login kembali.')
+        return
+      }
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/public/materials/${materialId}`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+        },
+        redirect: "follow" as RequestRedirect
+      })
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem("token")
+          setMessageFailed('Sesi telah berakhir. Silakan login kembali.')
+          setTimeout(() => router.push('/login'), 2000)
+          return
+        }
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const result: ApiResponse = await response.json()
+      
+      if (result.success) {
+        setDetailMaterial(result.data)
+        setShowDetailModal(true)
+      } else {
+        throw new Error(result.message || 'Gagal memuat detail materi')
+      }
+    } catch (err) {
+      console.error('Error fetching material detail:', err)
+      setMessageFailed('Gagal memuat detail materi. Silakan coba lagi.')
+    } finally {
+      setDetailLoading(false)
+    }
+  }
+
+  // Open detail modal
+  const handleViewDetail = (material: Material) => {
+    // Jika data sudah lengkap (dari response materials), langsung tampilkan
+    if (material.video_path || material.thumnail_path) {
+      setDetailMaterial(material)
+      setShowDetailModal(true)
+    } else {
+      // Jika data tidak lengkap, fetch detail dari API
+      fetchMaterialDetail(material.id)
     }
   }
 
@@ -192,9 +333,71 @@ export default function MaterialsPage() {
     }))
   }
 
-  // Handle file changes
+  // Handle file changes dengan validasi
   const handleFileChange = (fieldName: keyof typeof files) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
+    
+    if (file) {
+      // Validasi ukuran file
+      const maxSize = fieldName === 'video' 
+        ? VALIDATION_RULES.files.video.maxSize 
+        : fieldName === 'thumnail'
+        ? VALIDATION_RULES.files.thumnail.maxSize
+        : VALIDATION_RULES.files.maxSize
+
+      if (file.size > maxSize) {
+        const maxSizeMB = maxSize / (1024 * 1024)
+        setMessageFailed(`Ukuran file ${fieldName} terlalu besar. Maksimal ${maxSizeMB}MB`)
+        e.target.value = '' // Reset input file
+        return
+      }
+
+      // Validasi format file
+      const fileName = file.name.toLowerCase()
+      let isValidFormat = false
+
+      switch (fieldName) {
+        case 'video':
+          isValidFormat = VALIDATION_RULES.files.video.formats.some(format => 
+            fileName.endsWith(format)
+          )
+          break
+        case 'materialFile':
+          isValidFormat = VALIDATION_RULES.files.materialFile.formats.some(format => 
+            fileName.endsWith(format)
+          )
+          break
+        case 'ringkasan':
+          isValidFormat = VALIDATION_RULES.files.ringkasan.formats.some(format => 
+            fileName.endsWith(format)
+          )
+          break
+        case 'template':
+          isValidFormat = VALIDATION_RULES.files.template.formats.some(format => 
+            fileName.endsWith(format)
+          )
+          break
+        case 'thumnail':
+          isValidFormat = VALIDATION_RULES.files.thumnail.formats.some(format => 
+            fileName.endsWith(format)
+          )
+          break
+      }
+
+      if (!isValidFormat) {
+        const allowedFormats = {
+          video: VALIDATION_RULES.files.video.formats.join(', '),
+          materialFile: VALIDATION_RULES.files.materialFile.formats.join(', '),
+          ringkasan: VALIDATION_RULES.files.ringkasan.formats.join(', '),
+          template: VALIDATION_RULES.files.template.formats.join(', '),
+          thumnail: VALIDATION_RULES.files.thumnail.formats.join(', ')
+        }
+        setMessageFailed(`Format file tidak didukung untuk ${fieldName}. Format yang diperbolehkan: ${allowedFormats[fieldName]}`)
+        e.target.value = '' // Reset input file
+        return
+      }
+    }
+
     setFiles(prev => ({
       ...prev,
       [fieldName]: file || null
@@ -227,57 +430,71 @@ export default function MaterialsPage() {
     setShowMaterialModal(true)
   }
 
-  // Submit material form (create atau update) - SUDAH DIPERBAIKI
+  // Submit material form (create atau update) - dengan struktur yang konsisten
   const handleSubmitMaterial = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Basic validation
+    // Validasi judul
     if (!materialForm.title.trim()) {
       setMessageFailed('Judul materi wajib diisi')
+      return
+    }
+
+    if (materialForm.title.length < VALIDATION_RULES.title.minLength) {
+      setMessageFailed(`Judul materi minimal ${VALIDATION_RULES.title.minLength} karakter`)
+      return
+    }
+
+    if (materialForm.title.length > VALIDATION_RULES.title.maxLength) {
+      setMessageFailed(`Judul materi maksimal ${VALIDATION_RULES.title.maxLength} karakter`)
       return
     }
 
     setLoading(true)
 
     try {
-      const token = getAuthToken()
+      const token = localStorage.getItem("token")
+      
       if (!token) {
-        setMessageFailed('Token autentikasi tidak ditemukan')
+        setMessageFailed('Token tidak ditemukan. Silakan login kembali.')
+        setLoading(false)
         return
       }
 
-      // CREATE MATERIAL - menggunakan FormData sesuai contoh API
+      // CREATE MATERIAL - menggunakan FormData
       if (!editingMaterial) {
         const formData = new FormData()
         formData.append('title', materialForm.title.trim())
         formData.append('content', materialForm.content.trim())
 
-        // Append files if they exist - sesuai field yang ada di contoh API
+        // Append files if they exist
         if (files.video) formData.append('video', files.video)
         if (files.materialFile) formData.append('materialFile', files.materialFile)
         if (files.ringkasan) formData.append('ringkasan', files.ringkasan)
         if (files.template) formData.append('template', files.template)
         if (files.thumnail) formData.append('thumnail', files.thumnail)
 
-        console.log('Creating material for section:', sectionId)
-
-        // ENDPOINT: POST /classes/sections/{sectionId}/materials
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/classes/sections/${sectionId}/materials`, {
           method: "POST",
           headers: { 
             "Authorization": `Bearer ${token}`,
-            // JANGAN tambahkan Content-Type untuk FormData, browser akan set otomatis
           },
           body: formData,
         })
 
-        const result = await response.json()
-        console.log('Create material response:', result)
-
         if (!response.ok) {
-          throw new Error(result?.message || `HTTP error! status: ${response.status}`)
+          if (response.status === 401) {
+            localStorage.removeItem("token")
+            setMessageFailed('Sesi telah berakhir. Silakan login kembali.')
+            setTimeout(() => router.push('/login'), 2000)
+            return
+          }
+          const errorData = await response.json().catch(() => null)
+          throw new Error(errorData?.message || `HTTP error! status: ${response.status}`)
         }
 
+        const result: ApiResponse = await response.json()
+        
         if (result.success) {
           await fetchMaterials()
           setShowMaterialModal(false)
@@ -287,7 +504,7 @@ export default function MaterialsPage() {
           throw new Error(result.message || 'Failed to create material')
         }
       } 
-      // UPDATE MATERIAL - menggunakan FormData untuk PATCH
+      // UPDATE MATERIAL - menggunakan FormData
       else {
         const formData = new FormData()
         formData.append('title', materialForm.title.trim())
@@ -300,7 +517,6 @@ export default function MaterialsPage() {
         if (files.template) formData.append('template', files.template)
         if (files.thumnail) formData.append('thumnail', files.thumnail)
 
-        // ENDPOINT: PATCH /classes/sections/{sectionId}/materials/{materialId}
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/classes/sections/${sectionId}/materials/${editingMaterial.id}`, {
           method: "PATCH",
           headers: { 
@@ -309,12 +525,19 @@ export default function MaterialsPage() {
           body: formData,
         })
 
-        const result = await response.json()
-
         if (!response.ok) {
-          throw new Error(result?.message || `HTTP error! status: ${response.status}`)
+          if (response.status === 401) {
+            localStorage.removeItem("token")
+            setMessageFailed('Sesi telah berakhir. Silakan login kembali.')
+            setTimeout(() => router.push('/login'), 2000)
+            return
+          }
+          const errorData = await response.json().catch(() => null)
+          throw new Error(errorData?.message || `HTTP error! status: ${response.status}`)
         }
 
+        const result: ApiResponse = await response.json()
+        
         if (result.success) {
           await fetchMaterials()
           setShowMaterialModal(false)
@@ -332,17 +555,18 @@ export default function MaterialsPage() {
     }
   }
 
-  // Delete material - SUDAH DIPERBAIKI
+  // Delete material dengan struktur yang konsisten
   const handleDeleteMaterial = async (materialId: number) => {
     setLoading(true)
     try {
-      const token = getAuthToken()
+      const token = localStorage.getItem("token")
+      
       if (!token) {
-        setMessageFailed('Token autentikasi tidak ditemukan')
+        setMessageFailed('Token tidak ditemukan. Silakan login kembali.')
+        setLoading(false)
         return
       }
 
-      // ENDPOINT: DELETE /classes/sections/{sectionId}/materials/{materialId}
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/classes/sections/${sectionId}/materials/${materialId}`, {
         method: "DELETE",
         headers: { 
@@ -350,12 +574,19 @@ export default function MaterialsPage() {
         },
       })
 
-      const result = await response.json()
-
       if (!response.ok) {
-        throw new Error(result?.message || `HTTP error! status: ${response.status}`)
+        if (response.status === 401) {
+          localStorage.removeItem("token")
+          setMessageFailed('Sesi telah berakhir. Silakan login kembali.')
+          setTimeout(() => router.push('/login'), 2000)
+          return
+        }
+        const errorData = await response.json().catch(() => null)
+        throw new Error(errorData?.message || `HTTP error! status: ${response.status}`)
       }
 
+      const result: ApiResponse = await response.json()
+      
       if (result.success) {
         await fetchMaterials()
         setMessageSuccess('Materi berhasil dihapus')
@@ -381,7 +612,6 @@ export default function MaterialsPage() {
   }
 
   // Get file type icon
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const getFileTypeIcon = (fileName: string) => {
     if (fileName?.includes('.mp4') || fileName?.includes('.mov') || fileName?.includes('.avi')) {
       return <Video className="w-4 h-4" />
@@ -393,7 +623,6 @@ export default function MaterialsPage() {
   }
 
   // Get file type label
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const getFileTypeLabel = (fileName: string) => {
     if (fileName?.includes('.mp4') || fileName?.includes('.mov') || fileName?.includes('.avi')) {
       return 'Video'
@@ -408,6 +637,17 @@ export default function MaterialsPage() {
       return 'Dokumen'
     }
     return 'File'
+  }
+
+  // Format date
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('id-ID', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
   }
 
   if (loading && !section) {
@@ -494,13 +734,28 @@ export default function MaterialsPage() {
               </button>
               <div className="h-4 w-px bg-gray-300"></div>
               <button 
-                onClick={() => router.push(`/classes/${classId}/sections/${sectionId}`)}
+                onClick={() => router.push(`/classes/${classId}`)}
                 className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
               >
                 <List className="w-4 h-4" />
                 <span>Kembali ke Section</span>
               </button>
             </div>
+
+            {/* Error State */}
+            {error && !loading && (
+              <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <p className="text-yellow-700 font-medium">{error}</p>
+                {error.includes('login kembali') && (
+                  <button 
+                    onClick={() => router.push('/login')}
+                    className="mt-3 bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition-colors"
+                  >
+                    Login Kembali
+                  </button>
+                )}
+              </div>
+            )}
 
             <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
               <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between mb-4">
@@ -579,6 +834,14 @@ export default function MaterialsPage() {
 
                         {/* Action Buttons */}
                         <div className="flex gap-2 ml-4">
+                          <button 
+                            onClick={() => handleViewDetail(material)}
+                            disabled={loading}
+                            className="bg-green-500 text-white p-2 rounded-lg transition-all duration-300 hover:bg-green-600 hover:scale-105 active:scale-95 disabled:opacity-50"
+                            title="Lihat Detail"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
                           <button 
                             onClick={() => handleEditMaterial(material)}
                             disabled={loading}
@@ -667,7 +930,7 @@ export default function MaterialsPage() {
                 <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Belum ada materi</h3>
                 <p className="text-gray-500 mb-6 max-w-md mx-auto">
-                  Mulai dengan membuat materi pertama untuk section `{section.title}``
+                  Mulai dengan membuat materi pertama untuk section `{section.title}`
                 </p>
                 <button 
                   onClick={handleCreateMaterial}
@@ -722,8 +985,21 @@ export default function MaterialsPage() {
                       onChange={handleMaterialInputChange}
                       disabled={loading}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 disabled:opacity-50 bg-white"
-                      placeholder="Masukkan judul materi"
+                      placeholder={`Masukkan judul materi (minimal ${VALIDATION_RULES.title.minLength} karakter)`}
+                      minLength={VALIDATION_RULES.title.minLength}
+                      maxLength={VALIDATION_RULES.title.maxLength}
                     />
+                    <div className="flex items-center gap-1 mt-1 text-xs text-gray-500">
+                      <Info className="w-3 h-3" />
+                      <span>
+                        {materialForm.title.length}/{VALIDATION_RULES.title.maxLength} karakter
+                        {materialForm.title.length > 0 && materialForm.title.length < VALIDATION_RULES.title.minLength && (
+                          <span className="text-red-500 ml-2">
+                            (Minimal {VALIDATION_RULES.title.minLength} karakter)
+                          </span>
+                        )}
+                      </span>
+                    </div>
                   </div>
                   
                   {/* Content Input */}
@@ -751,10 +1027,13 @@ export default function MaterialsPage() {
                       </label>
                       <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-blue-500 transition-colors">
                         <Video className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                        <p className="text-sm text-gray-600 mb-2">Upload video materi</p>
+                        <p className="text-sm text-gray-600 mb-1">Upload video materi</p>
+                        <p className="text-xs text-gray-500 mb-2">
+                          Format: {VALIDATION_RULES.files.video.formats.join(', ')} | Maks: 50MB
+                        </p>
                         <input
                           type="file"
-                          accept="video/*"
+                          accept={VALIDATION_RULES.files.video.formats.join(',')}
                           onChange={handleFileChange('video')}
                           disabled={loading}
                           className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
@@ -769,9 +1048,13 @@ export default function MaterialsPage() {
                       </label>
                       <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-blue-500 transition-colors">
                         <File className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                        <p className="text-sm text-gray-600 mb-2">Upload file materi (PDF, DOC, dll)</p>
+                        <p className="text-sm text-gray-600 mb-1">Upload file materi</p>
+                        <p className="text-xs text-gray-500 mb-2">
+                          Format: {VALIDATION_RULES.files.materialFile.formats.join(', ')} | Maks: 10MB
+                        </p>
                         <input
                           type="file"
+                          accept={VALIDATION_RULES.files.materialFile.formats.join(',')}
                           onChange={handleFileChange('materialFile')}
                           disabled={loading}
                           className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
@@ -786,9 +1069,13 @@ export default function MaterialsPage() {
                       </label>
                       <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-blue-500 transition-colors">
                         <FileText className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                        <p className="text-sm text-gray-600 mb-2">Upload file ringkasan</p>
+                        <p className="text-sm text-gray-600 mb-1">Upload file ringkasan</p>
+                        <p className="text-xs text-gray-500 mb-2">
+                          Format: {VALIDATION_RULES.files.ringkasan.formats.join(', ')} | Maks: 10MB
+                        </p>
                         <input
                           type="file"
+                          accept={VALIDATION_RULES.files.ringkasan.formats.join(',')}
                           onChange={handleFileChange('ringkasan')}
                           disabled={loading}
                           className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
@@ -803,9 +1090,13 @@ export default function MaterialsPage() {
                       </label>
                       <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-blue-500 transition-colors">
                         <File className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                        <p className="text-sm text-gray-600 mb-2">Upload file template</p>
+                        <p className="text-sm text-gray-600 mb-1">Upload file template</p>
+                        <p className="text-xs text-gray-500 mb-2">
+                          Format: {VALIDATION_RULES.files.template.formats.join(', ')} | Maks: 10MB
+                        </p>
                         <input
                           type="file"
+                          accept={VALIDATION_RULES.files.template.formats.join(',')}
                           onChange={handleFileChange('template')}
                           disabled={loading}
                           className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
@@ -820,10 +1111,13 @@ export default function MaterialsPage() {
                       </label>
                       <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-blue-500 transition-colors">
                         <ImageIcon className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                        <p className="text-sm text-gray-600 mb-2">Upload thumbnail materi</p>
+                        <p className="text-sm text-gray-600 mb-1">Upload thumbnail materi</p>
+                        <p className="text-xs text-gray-500 mb-2">
+                          Format: {VALIDATION_RULES.files.thumnail.formats.join(', ')} | Maks: 5MB
+                        </p>
                         <input
                           type="file"
-                          accept="image/*"
+                          accept={VALIDATION_RULES.files.thumnail.formats.join(',')}
                           onChange={handleFileChange('thumnail')}
                           disabled={loading}
                           className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
@@ -848,7 +1142,7 @@ export default function MaterialsPage() {
                   </button>
                   <button
                     type="submit"
-                    disabled={loading}
+                    disabled={loading || materialForm.title.length < VALIDATION_RULES.title.minLength}
                     className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
                     {loading ? (
@@ -867,6 +1161,233 @@ export default function MaterialsPage() {
         </div>
       )}
 
+      {/* Detail Material Modal */}
+      {showDetailModal && detailMaterial && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-6xl w-full max-h-[95vh] overflow-hidden flex flex-col border border-gray-200 shadow-2xl">
+            {/* Modal Header */}
+            <div className="flex justify-between items-center p-6 border-b border-gray-200 bg-white">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">
+                  Detail Materi
+                </h3>
+                <p className="text-gray-600 text-sm mt-1">
+                  Informasi lengkap tentang materi pembelajaran
+                </p>
+              </div>
+              <button 
+                onClick={() => {
+                  setShowDetailModal(false)
+                  setDetailMaterial(null)
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Modal Body - Scrollable */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="p-6">
+                {detailLoading ? (
+                  <div className="flex justify-center items-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Main Content */}
+                    <div className="lg:col-span-2 space-y-6">
+                      {/* Thumbnail */}
+                      {detailMaterial.thumnail_path && (
+                        <div className="rounded-lg overflow-hidden bg-gray-100">
+                          <img 
+                            src={detailMaterial.thumnail_path} 
+                            alt={detailMaterial.title}
+                            className="w-full h-48 object-cover"
+                          />
+                        </div>
+                      )}
+
+                      {/* Video Player */}
+                      {detailMaterial.video_path && (
+                        <div className="bg-black rounded-lg overflow-hidden">
+                          <video 
+                            controls 
+                            className="w-full h-auto max-h-96"
+                            poster={detailMaterial.thumnail_path}
+                          >
+                            <source src={detailMaterial.video_path} type="video/mp4" />
+                            Browser Anda tidak mendukung pemutar video.
+                          </video>
+                        </div>
+                      )}
+
+                      {/* Video External Link */}
+                      {detailMaterial.video_path && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <Video className="w-5 h-5 text-blue-600" />
+                              <div>
+                                <p className="font-medium text-blue-900">Video Materi</p>
+                                <p className="text-sm text-blue-700">
+                                  Buka video di tab baru jika mengalami masalah pemutaran
+                                </p>
+                              </div>
+                            </div>
+                            <a 
+                              href={detailMaterial.video_path}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                              Buka Video
+                            </a>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Content */}
+                      <div className="bg-white rounded-lg border border-gray-200 p-6">
+                        <h4 className="text-lg font-bold text-gray-900 mb-4">Deskripsi Materi</h4>
+                        <div className="prose max-w-none">
+                          <p className="text-gray-700 whitespace-pre-line">
+                            {detailMaterial.content || 'Tidak ada deskripsi yang tersedia.'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Sidebar - Info & Files */}
+                    <div className="space-y-6">
+                      {/* Basic Info */}
+                      <div className="bg-white rounded-lg border border-gray-200 p-6">
+                        <h4 className="text-lg font-bold text-gray-900 mb-4">Informasi Materi</h4>
+                        <div className="space-y-3">
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Judul</p>
+                            <p className="text-gray-900 font-semibold">{detailMaterial.title}</p>
+                          </div>
+                          {detailMaterial.xp && (
+                            <div>
+                              <p className="text-sm font-medium text-gray-500">XP</p>
+                              <p className="text-green-600 font-semibold">+{detailMaterial.xp} XP</p>
+                            </div>
+                          )}
+                          {detailMaterial.createdAt && (
+                            <div>
+                              <p className="text-sm font-medium text-gray-500">Dibuat</p>
+                              <p className="text-gray-700">{formatDate(detailMaterial.createdAt)}</p>
+                            </div>
+                          )}
+                          {detailMaterial.updatedAt && (
+                            <div>
+                              <p className="text-sm font-medium text-gray-500">Diperbarui</p>
+                              <p className="text-gray-700">{formatDate(detailMaterial.updatedAt)}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* File Attachments */}
+                      <div className="bg-white rounded-lg border border-gray-200 p-6">
+                        <h4 className="text-lg font-bold text-gray-900 mb-4">File Terlampir</h4>
+                        <div className="space-y-3">
+                          {detailMaterial.materialFilePath && (
+                            <div className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
+                              <div className="flex items-center gap-2">
+                                <File className="w-4 h-4 text-green-600" />
+                                <span className="text-sm text-gray-700">File Materi</span>
+                              </div>
+                              <a 
+                                href={detailMaterial.materialFilePath}
+                                download
+                                className="text-green-600 hover:text-green-800 transition-colors"
+                                title="Download File Materi"
+                              >
+                                <Download className="w-4 h-4" />
+                              </a>
+                            </div>
+                          )}
+
+                          {detailMaterial.ringkasanPath && (
+                            <div className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
+                              <div className="flex items-center gap-2">
+                                <FileText className="w-4 h-4 text-purple-600" />
+                                <span className="text-sm text-gray-700">Ringkasan</span>
+                              </div>
+                              <a 
+                                href={detailMaterial.ringkasanPath}
+                                download
+                                className="text-purple-600 hover:text-purple-800 transition-colors"
+                                title="Download Ringkasan"
+                              >
+                                <Download className="w-4 h-4" />
+                              </a>
+                            </div>
+                          )}
+
+                          {detailMaterial.templatePath && (
+                            <div className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
+                              <div className="flex items-center gap-2">
+                                <File className="w-4 h-4 text-orange-600" />
+                                <span className="text-sm text-gray-700">Template</span>
+                              </div>
+                              <a 
+                                href={detailMaterial.templatePath}
+                                download
+                                className="text-orange-600 hover:text-orange-800 transition-colors"
+                                title="Download Template"
+                              >
+                                <Download className="w-4 h-4" />
+                              </a>
+                            </div>
+                          )}
+
+                          {!detailMaterial.materialFilePath && !detailMaterial.ringkasanPath && !detailMaterial.templatePath && (
+                            <p className="text-gray-500 text-sm text-center py-4">
+                              Tidak ada file terlampir
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="bg-white rounded-lg border border-gray-200 p-6">
+                        <h4 className="text-lg font-bold text-gray-900 mb-4">Aksi</h4>
+                        <div className="space-y-3">
+                          <button
+                            onClick={() => {
+                              setShowDetailModal(false)
+                              handleEditMaterial(detailMaterial)
+                            }}
+                            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                          >
+                            <Edit className="w-4 h-4" />
+                            Edit Materi
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowDetailModal(false)
+                              openDeleteConfirm(detailMaterial.id, detailMaterial.title)
+                            }}
+                            className="w-full bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Hapus Materi
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm.show && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -880,7 +1401,7 @@ export default function MaterialsPage() {
               </div>
               
               <p className="text-gray-600 mb-6">
-                Apakah Anda yakin ingin menghapus materi <span className="font-semibold text-gray-900">"{showDeleteConfirm.materialTitle}"</span>? Tindakan ini tidak dapat dibatalkan.
+                Apakah Anda yakin ingin menghapus materi <span className="font-semibold text-gray-900">`{showDeleteConfirm.materialTitle}`</span>? Tindakan ini tidak dapat dibatalkan.
               </p>
 
               <div className="flex gap-3 justify-end">

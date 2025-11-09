@@ -33,6 +33,12 @@ interface Category {
   name: string;
 }
 
+interface ApiResponse {
+  success: boolean
+  data: any
+  message?: string
+}
+
 // Helper function to get valid image URL
 const getValidImageUrl = (path: string | null | undefined): string => {
   if (!path) return '';
@@ -64,7 +70,8 @@ export default function ClassDetailPage() {
     { id: 3, name: 'Penelitian' },
     { id: 4, name: 'Desain' }
   ])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [showSectionModal, setShowSectionModal] = useState(false)
   const [editingSection, setEditingSection] = useState<Section | null>(null)
   const [sectionForm, setSectionForm] = useState({
@@ -81,6 +88,17 @@ export default function ClassDetailPage() {
     sectionTitle: ''
   })
 
+  // Fungsi untuk map category
+  const mapCategory = (categoryId: number): string => {
+    const categoryMap: { [key: number]: string } = {
+      1: 'Essay',
+      2: 'Business Plan',
+      3: 'Penelitian',
+      4: 'Desain'
+    }
+    return categoryMap[categoryId] || 'Kursus'
+  }
+
   // Auto hide messages after 5 seconds
   useEffect(() => {
     if (messageSuccess || messageFailed) {
@@ -92,34 +110,41 @@ export default function ClassDetailPage() {
     }
   }, [messageSuccess, messageFailed])
 
-  // Get auth token from localStorage
-  const getAuthToken = () => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('token') || ''
-    }
-    return ''
-  }
-
-  // Fetch class data
+  // Fetch class data dengan struktur yang konsisten
   const fetchClassData = async () => {
-    setLoading(true)
     try {
-      const token = getAuthToken()
+      setLoading(true)
+      
+      // Ambil token dari localStorage
+      const token = localStorage.getItem("token")
+      
       if (!token) {
-        console.warn('No auth token found')
+        setError('Token tidak ditemukan. Silakan login kembali.')
+        setLoading(false)
         return
       }
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/classes/${classId}`, {
         method: "GET",
-        headers: { 
+        headers: {
           "Authorization": `Bearer ${token}`,
         },
+        redirect: "follow" as RequestRedirect
       })
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          // Token expired atau invalid
+          localStorage.removeItem("token")
+          setError('Sesi telah berakhir. Silakan login kembali.')
+          setTimeout(() => router.push('/login'), 2000)
+          return
+        }
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
       
-      if (!response.ok) throw new Error('Failed to fetch class data')
+      const result: ApiResponse = await response.json()
       
-      const result = await response.json()
       if (result.success) {
         const classWithStats = {
           ...result.data,
@@ -127,45 +152,96 @@ export default function ClassDetailPage() {
           materialCount: Math.floor(Math.random() * 15) + 5 // Mock data
         }
         setClassData(classWithStats)
+        setError(null)
+      } else {
+        throw new Error(result.message || 'Gagal memuat data kelas')
       }
-    } catch (error) {
-      console.error('Error fetching class data:', error)
+    } catch (err) {
+      console.error('Error fetching class data:', err)
+      setError('Gagal memuat data kelas. Silakan coba lagi.')
       setMessageFailed('Gagal memuat data kelas')
+      // Fallback ke data statis jika API error
+      setClassData(getFallbackClassData())
     } finally {
       setLoading(false)
     }
   }
 
-  // Fetch sections
+  // Fallback data jika API error
+  const getFallbackClassData = (): Class => ({
+    id: parseInt(classId),
+    name: 'Kelas Contoh',
+    description: 'Ini adalah deskripsi kelas contoh',
+    image_path: '/placeholder.png',
+    categoryId: 1,
+    studentCount: 25,
+    materialCount: 8,
+    createdAt: new Date().toISOString()
+  })
+
+  // Fetch sections dengan struktur yang konsisten
   const fetchSections = async () => {
-    setLoading(true)
     try {
-      const token = getAuthToken()
+      setLoading(true)
+      
+      // Ambil token dari localStorage
+      const token = localStorage.getItem("token")
+      
       if (!token) {
-        console.warn('No auth token found')
+        setError('Token tidak ditemukan. Silakan login kembali.')
+        setLoading(false)
         return
       }
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/classes/${classId}/sections`, {
         method: "GET",
-        headers: { 
+        headers: {
           "Authorization": `Bearer ${token}`,
         },
+        redirect: "follow" as RequestRedirect
       })
-      
-      if (!response.ok) throw new Error('Failed to fetch sections')
-      
-      const result = await response.json()
-      if (result.success) {
-        setSections(result.data)
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          // Token expired atau invalid
+          localStorage.removeItem("token")
+          setError('Sesi telah berakhir. Silakan login kembali.')
+          setTimeout(() => router.push('/login'), 2000)
+          return
+        }
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
-    } catch (error) {
-      console.error('Error fetching sections:', error)
+      
+      const result: ApiResponse = await response.json()
+      
+      if (result.success) {
+        setSections(result.data || [])
+        setError(null)
+      } else {
+        throw new Error(result.message || 'Gagal memuat data section')
+      }
+    } catch (err) {
+      console.error('Error fetching sections:', err)
+      setError('Gagal memuat data section. Silakan coba lagi.')
       setMessageFailed('Gagal memuat data section')
+      // Fallback ke data statis jika API error
+      setSections(getFallbackSections())
     } finally {
       setLoading(false)
     }
   }
+
+  // Fallback sections jika API error
+  const getFallbackSections = (): Section[] => [
+    {
+      id: 1,
+      title: 'Section Contoh',
+      description: 'Ini adalah section contoh',
+      order: 1,
+      Material: [],
+      Quiz: []
+    }
+  ]
 
   useEffect(() => {
     if (classId) {
@@ -221,9 +297,11 @@ export default function ClassDetailPage() {
     setLoading(true)
 
     try {
-      const token = getAuthToken()
+      const token = localStorage.getItem("token")
+      
       if (!token) {
-        setMessageFailed('Token autentikasi tidak ditemukan')
+        setMessageFailed('Token tidak ditemukan. Silakan login kembali.')
+        setLoading(false)
         return
       }
 
@@ -242,6 +320,12 @@ export default function ClassDetailPage() {
         })
 
         if (!response.ok) {
+          if (response.status === 401) {
+            localStorage.removeItem("token")
+            setMessageFailed('Sesi telah berakhir. Silakan login kembali.')
+            setTimeout(() => router.push('/login'), 2000)
+            return
+          }
           const errorData = await response.json().catch(() => null)
           throw new Error(errorData?.message || `HTTP error! status: ${response.status}`)
         }
@@ -272,6 +356,12 @@ export default function ClassDetailPage() {
         })
 
         if (!response.ok) {
+          if (response.status === 401) {
+            localStorage.removeItem("token")
+            setMessageFailed('Sesi telah berakhir. Silakan login kembali.')
+            setTimeout(() => router.push('/login'), 2000)
+            return
+          }
           const errorData = await response.json().catch(() => null)
           throw new Error(errorData?.message || `HTTP error! status: ${response.status}`)
         }
@@ -299,9 +389,11 @@ export default function ClassDetailPage() {
   const handleDeleteSection = async (sectionId: number) => {
     setLoading(true)
     try {
-      const token = getAuthToken()
+      const token = localStorage.getItem("token")
+      
       if (!token) {
-        setMessageFailed('Token autentikasi tidak ditemukan')
+        setMessageFailed('Token tidak ditemukan. Silakan login kembali.')
+        setLoading(false)
         return
       }
 
@@ -313,6 +405,12 @@ export default function ClassDetailPage() {
       })
 
       if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem("token")
+          setMessageFailed('Sesi telah berakhir. Silakan login kembali.')
+          setTimeout(() => router.push('/login'), 2000)
+          return
+        }
         const errorData = await response.json().catch(() => null)
         throw new Error(errorData?.message || `HTTP error! status: ${response.status}`)
       }
@@ -432,13 +530,28 @@ export default function ClassDetailPage() {
               <span>Kembali ke Kelas Saya</span>
             </button>
 
+            {/* Error State */}
+            {error && !loading && (
+              <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <p className="text-yellow-700 font-medium">{error}</p>
+                {error.includes('login kembali') && (
+                  <button 
+                    onClick={() => router.push('/login')}
+                    className="mt-3 bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition-colors"
+                  >
+                    Login Kembali
+                  </button>
+                )}
+              </div>
+            )}
+
             <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
               <div className="flex flex-col lg:flex-row">
                 {/* Class Image */}
                 <div className="lg:w-1/3 h-64 lg:h-auto relative">
-                  {isValidImage(classData.image_path) ? (
+                  {isValidImage(classData.image_path_relative || classData.image_path) ? (
                     <Image
-                      src={getValidImageUrl(classData.image_path)}
+                      src={getValidImageUrl(classData.image_path_relative || classData.image_path)}
                       alt={classData.name}
                       fill
                       className="object-cover"
@@ -459,7 +572,7 @@ export default function ClassDetailPage() {
                       </h1>
                       <div className="flex flex-wrap gap-2 mb-4">
                         <span className="bg-blue-500 text-white text-xs px-3 py-1 rounded-full font-medium">
-                          {categories.find(cat => cat.id === classData.categoryId)?.name || 'Unknown'}
+                          {mapCategory(classData.categoryId)}
                         </span>
                         <span className="bg-green-500 text-white text-xs px-3 py-1 rounded-full font-medium">
                           Aktif

@@ -25,6 +25,27 @@ interface Category {
   name: string;
 }
 
+interface ApiResponse {
+  success: boolean
+  data: {
+    classes: Array<{
+      id: number
+      name: string
+      description: string
+      image_path: string
+      categoryId: number
+      image_path_relative: string
+    }>
+    meta: {
+      totalItems: number
+      itemsPerPage: number
+      totalPages: number
+      currentPage: number
+    }
+  }
+  message?: string
+}
+
 // Helper function to get valid image URL
 const getValidImageUrl = (path: string | null | undefined): string => {
   if (!path) return '';
@@ -61,7 +82,7 @@ export default function TeacherHome() {
   const [searchQuery, setSearchQuery] = useState('')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [editingClass, setEditingClass] = useState<Class | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -69,6 +90,7 @@ export default function TeacherHome() {
     image: null as File | null
   })
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   
   // State untuk message feedback
   const [messageSuccess, setMessageSuccess] = useState<string | null>(null)
@@ -79,7 +101,16 @@ export default function TeacherHome() {
     className: ''
   })
 
-  const API_BASE_URL = 'http://localhost:3001/api/v1'
+  // Fungsi untuk map category
+  const mapCategory = (categoryId: number): string => {
+    const categoryMap: { [key: number]: string } = {
+      1: 'Essay',
+      2: 'Business Plan',
+      3: 'Penelitian',
+      4: 'Desain'
+    }
+    return categoryMap[categoryId] || 'Kursus'
+  }
 
   // Auto hide messages after 5 seconds
   useEffect(() => {
@@ -113,51 +144,104 @@ export default function TeacherHome() {
     setFilteredClasses(result);
   }, [activeFilter, searchQuery, classes])
 
-  // Get auth token from localStorage
-  const getAuthToken = () => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('token') || ''
-    }
-    return ''
-  }
-
-  // Fetch classes from API
+  // Fetch classes from API dengan struktur yang sama seperti di e-learning
   const fetchClasses = async () => {
-    setLoading(true)
     try {
-      const token = getAuthToken()
+      setLoading(true)
+      
+      // Ambil token dari localStorage
+      const token = localStorage.getItem("token")
+      
       if (!token) {
-        console.warn('No auth token found')
+        setError('Token tidak ditemukan. Silakan login kembali.')
+        setLoading(false)
         return
       }
 
-      const response = await fetch(`${API_BASE_URL}/classes?page=1&limit=10`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/public/classes`, {
+        method: "GET",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+          "Authorization": `Bearer ${token}`,
+        },
+        redirect: "follow" as RequestRedirect
       })
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          // Token expired atau invalid
+          localStorage.removeItem("token")
+          setError('Sesi telah berakhir. Silakan login kembali.')
+          setTimeout(() => router.push('/login'), 2000)
+          return
+        }
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
       
-      if (!response.ok) throw new Error('Failed to fetch classes')
+      const result: ApiResponse = await response.json()
       
-      const result = await response.json()
-      if (result.success) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const transformedClasses = result.data.map((cls: any) => ({
-          ...cls,
+      if (result.success && result.data.classes) {
+        // Transform data dari API ke format yang diharapkan komponen
+        const transformedClasses = result.data.classes.map((classItem) => ({
+          id: classItem.id,
+          name: classItem.name,
+          description: classItem.description,
+          image_path: classItem.image_path,
+          image_path_relative: classItem.image_path_relative,
+          categoryId: classItem.categoryId,
           studentCount: Math.floor(Math.random() * 30) + 10,
           materialCount: Math.floor(Math.random() * 15) + 5,
           createdAt: new Date().toISOString()
         }))
+
         setClasses(transformedClasses)
+        setError(null)
+      } else {
+        throw new Error(result.message || 'Gagal memuat data kelas')
       }
-    } catch (error) {
-      console.error('Error fetching classes:', error)
+    } catch (err) {
+      console.error('Error fetching classes:', err)
+      setError('Gagal memuat data kelas. Silakan coba lagi.')
       setMessageFailed('Gagal memuat data kelas')
+      // Fallback ke data statis jika API error
+      setClasses(getFallbackClasses())
     } finally {
       setLoading(false)
     }
   }
+
+  // Fallback data jika API error
+  const getFallbackClasses = (): Class[] => [
+    {
+      id: 1,
+      name: 'Menulis Esai Akademik yang Menang',
+      description: 'Pelajari teknik menulis esai akademik yang efektif untuk kompetisi',
+      image_path: '/essay.png',
+      categoryId: 1,
+      studentCount: 25,
+      materialCount: 8,
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 2,
+      name: 'Business Plan untuk Kompetisi Startup',
+      description: 'Buat business plan yang menarik untuk kompetisi startup',
+      image_path: '/business-plan.png',
+      categoryId: 2,
+      studentCount: 18,
+      materialCount: 12,
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 3,
+      name: 'Karya Tulis Ilmiah & Publikasi',
+      description: 'Teknik menulis karya ilmiah dan strategi publikasi',
+      image_path: '/karya-tulis-ilmiah.png',
+      categoryId: 3,
+      studentCount: 32,
+      materialCount: 10,
+      createdAt: new Date().toISOString()
+    }
+  ]
 
   useEffect(() => {
     fetchClasses()
@@ -226,8 +310,8 @@ export default function TeacherHome() {
       categoryId: classItem.categoryId.toString(),
       image: null
     })
-    if (isValidImage(classItem.image_path)) {
-      setImagePreview(getValidImageUrl(classItem.image_path))
+    if (isValidImage(classItem.image_path_relative || classItem.image_path)) {
+      setImagePreview(getValidImageUrl(classItem.image_path_relative || classItem.image_path))
     } else {
       setImagePreview(null)
     }
@@ -246,9 +330,11 @@ export default function TeacherHome() {
     setLoading(true)
 
     try {
-      const token = getAuthToken()
+      const token = localStorage.getItem("token")
+      
       if (!token) {
-        setMessageFailed('Token autentikasi tidak ditemukan')
+        setMessageFailed('Token tidak ditemukan. Silakan login kembali.')
+        setLoading(false)
         return
       }
 
@@ -262,8 +348,8 @@ export default function TeacherHome() {
       }
 
       const url = editingClass 
-        ? `${API_BASE_URL}/classes/${editingClass.id}`
-        : `${API_BASE_URL}/classes`
+        ? `${process.env.NEXT_PUBLIC_API_URL}/classes/${editingClass.id}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/classes`
 
       const method = editingClass ? 'PATCH' : 'POST'
 
@@ -276,6 +362,12 @@ export default function TeacherHome() {
       })
 
       if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem("token")
+          setMessageFailed('Sesi telah berakhir. Silakan login kembali.')
+          setTimeout(() => router.push('/login'), 2000)
+          return
+        }
         const errorData = await response.json().catch(() => null)
         throw new Error(errorData?.message || `HTTP error! status: ${response.status}`)
       }
@@ -302,21 +394,28 @@ export default function TeacherHome() {
   const handleDeleteClass = async (classId: number) => {
     setLoading(true)
     try {
-      const token = getAuthToken()
+      const token = localStorage.getItem("token")
+      
       if (!token) {
-        setMessageFailed('Token autentikasi tidak ditemukan')
+        setMessageFailed('Token tidak ditemukan. Silakan login kembali.')
+        setLoading(false)
         return
       }
 
-      const response = await fetch(`${API_BASE_URL}/classes/${classId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/classes/${classId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/x-www-form-urlencoded'
         }
       })
 
       if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem("token")
+          setMessageFailed('Sesi telah berakhir. Silakan login kembali.')
+          setTimeout(() => router.push('/login'), 2000)
+          return
+        }
         const errorData = await response.json().catch(() => null)
         throw new Error(errorData?.message || `HTTP error! status: ${response.status}`)
       }
@@ -415,6 +514,21 @@ export default function TeacherHome() {
                   Buat Kelas Baru
                 </button>
               </div>
+
+              {/* Error State */}
+              {error && !loading && (
+                <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <p className="text-yellow-700 font-medium">{error}</p>
+                  {error.includes('login kembali') && (
+                    <button 
+                      onClick={() => router.push('/login')}
+                      className="mt-3 bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition-colors"
+                    >
+                      Login Kembali
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* Stats Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
@@ -518,9 +632,9 @@ export default function TeacherHome() {
                     className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-all duration-300 hover:shadow-md hover:border-blue-300 group"
                   >
                     <div className="relative h-48 w-full overflow-hidden">
-                      {isValidImage(classItem.image_path) ? (
+                      {isValidImage(classItem.image_path_relative || classItem.image_path) ? (
                         <Image
-                          src={getValidImageUrl(classItem.image_path)}
+                          src={getValidImageUrl(classItem.image_path_relative || classItem.image_path)}
                           alt={classItem.name}
                           fill
                           className="object-cover transition-all duration-500 group-hover:scale-105"
@@ -538,7 +652,7 @@ export default function TeacherHome() {
                       {/* Category Badge */}
                       <div className="absolute top-3 right-3">
                         <span className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full font-medium">
-                          {categories.find(cat => cat.id === classItem.categoryId)?.name || 'Unknown'}
+                          {mapCategory(classItem.categoryId)}
                         </span>
                       </div>
                     </div>

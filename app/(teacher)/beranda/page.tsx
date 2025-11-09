@@ -24,6 +24,27 @@ interface Category {
   name: string;
 }
 
+interface ApiResponse {
+  success: boolean
+  data: {
+    classes: Array<{
+      id: number
+      name: string
+      description: string
+      image_path: string
+      categoryId: number
+      image_path_relative: string
+    }>
+    meta: {
+      totalItems: number
+      itemsPerPage: number
+      totalPages: number
+      currentPage: number
+    }
+  }
+  message?: string
+}
+
 // Helper function to get valid image URL
 const getValidImageUrl = (path: string | null | undefined): string => {
   if (!path) return '';
@@ -55,56 +76,117 @@ export default function TeacherDashboard() {
     { id: 4, name: 'Desain' }
   ])
   const [activeFilter, setActiveFilter] = useState<number | 'all'>('all')
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const API_BASE_URL = 'http://localhost:3001/api/v1'
-
-  // Get auth token from localStorage
-  const getAuthToken = () => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('token') || ''
+  // Fungsi untuk map category
+  const mapCategory = (categoryId: number): string => {
+    const categoryMap: { [key: number]: string } = {
+      1: 'Essay',
+      2: 'Business Plan',
+      3: 'Penelitian',
+      4: 'Desain'
     }
-    return ''
+    return categoryMap[categoryId] || 'Kursus'
   }
 
-  // Fetch classes from API
+  // Fetch classes from API dengan struktur yang sama seperti di e-learning
   const fetchClasses = async () => {
-    setLoading(true)
     try {
-      const token = getAuthToken()
+      setLoading(true)
+      
+      // Ambil token dari localStorage
+      const token = localStorage.getItem("token")
+      
       if (!token) {
-        console.warn('No auth token found')
+        setError('Token tidak ditemukan. Silakan login kembali.')
+        setLoading(false)
         return
       }
 
-      const response = await fetch(`${API_BASE_URL}/classes?page=1&limit=10`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/public/classes`, {
+        method: "GET",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+          "Authorization": `Bearer ${token}`,
+        },
+        redirect: "follow" as RequestRedirect
       })
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          // Token expired atau invalid
+          localStorage.removeItem("token")
+          setError('Sesi telah berakhir. Silakan login kembali.')
+          setTimeout(() => router.push('/login'), 2000)
+          return
+        }
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
       
-      if (!response.ok) throw new Error('Failed to fetch classes')
+      const result: ApiResponse = await response.json()
       
-      const result = await response.json()
-      if (result.success) {
-        // Transform API data to match our interface
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const transformedClasses = result.data.map((cls: any) => ({
-          ...cls,
-          title: cls.name,
+      if (result.success && result.data.classes) {
+        // Transform data dari API ke format yang diharapkan komponen
+        const transformedClasses = result.data.classes.map((classItem) => ({
+          id: classItem.id,
+          name: classItem.name,
+          description: classItem.description,
+          image_path: classItem.image_path,
+          image_path_relative: classItem.image_path_relative,
+          categoryId: classItem.categoryId,
           studentCount: Math.floor(Math.random() * 30) + 10,
           materialCount: Math.floor(Math.random() * 15) + 5,
           createdAt: new Date().toISOString()
         }))
+
         setClasses(transformedClasses)
+        setError(null)
+      } else {
+        throw new Error(result.message || 'Gagal memuat data kelas')
       }
-    } catch (error) {
-      console.error('Error fetching classes:', error)
+    } catch (err) {
+      console.error('Error fetching classes:', err)
+      setError('Gagal memuat data kelas. Silakan coba lagi.')
+      // Fallback ke data statis jika API error
+      setClasses(getFallbackClasses())
     } finally {
       setLoading(false)
     }
   }
+
+  // Fallback data jika API error
+  const getFallbackClasses = (): Class[] => [
+    {
+      id: 1,
+      name: 'Menulis Esai Akademik yang Menang',
+      description: 'Pelajari teknik menulis esai akademik yang efektif untuk kompetisi',
+      image_path: '/essay.png',
+      categoryId: 1,
+      studentCount: 25,
+      materialCount: 8,
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 2,
+      name: 'Business Plan untuk Kompetisi Startup',
+      description: 'Buat business plan yang menarik untuk kompetisi startup',
+      image_path: '/business-plan.png',
+      categoryId: 2,
+      studentCount: 18,
+      materialCount: 12,
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 3,
+      name: 'Karya Tulis Ilmiah & Publikasi',
+      description: 'Teknik menulis karya ilmiah dan strategi publikasi',
+      image_path: '/karya-tulis-ilmiah.png',
+      categoryId: 3,
+      studentCount: 32,
+      materialCount: 10,
+      createdAt: new Date().toISOString()
+    }
+  ]
 
   useEffect(() => {
     setIsVisible(true)
@@ -274,6 +356,23 @@ export default function TeacherDashboard() {
             </div>
           </section>
 
+          {/* Error State */}
+          {error && !loading && (
+            <section className="w-full max-w-7xl mx-auto">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+                <p className="text-yellow-700 font-medium">{error}</p>
+                {error.includes('login kembali') && (
+                  <button 
+                    onClick={() => router.push('/login')}
+                    className="mt-3 bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition-colors"
+                  >
+                    Login Kembali
+                  </button>
+                )}
+              </div>
+            </section>
+          )}
+
           {/* Kelas Saya Section */}
           <section className="w-full max-w-7xl mx-auto">
             <div className="flex justify-between items-center mb-6">
@@ -353,9 +452,9 @@ export default function TeacherDashboard() {
                     className="bg-white rounded-xl overflow-hidden shadow-md border border-gray-200 transition-all duration-300 hover:shadow-xl hover:border-blue-300 group"
                   >
                     <div className="relative h-40 w-full overflow-hidden">
-                      {isValidImage(classItem.image_path) ? (
+                      {isValidImage(classItem.image_path_relative || classItem.image_path) ? (
                         <Image
-                          src={getValidImageUrl(classItem.image_path)}
+                          src={getValidImageUrl(classItem.image_path_relative || classItem.image_path)}
                           alt={classItem.name}
                           fill
                           className="object-cover transition-all duration-500 group-hover:scale-110"
@@ -381,7 +480,7 @@ export default function TeacherDashboard() {
                       {/* Category Badge */}
                       <div className="absolute top-3 right-3">
                         <span className="bg-blue-500 text-white text-sm px-3 py-1 rounded-full font-medium">
-                          {categories.find(cat => cat.id === classItem.categoryId)?.name || 'Unknown'}
+                          {mapCategory(classItem.categoryId)}
                         </span>
                       </div>
                     </div>
@@ -425,7 +524,7 @@ export default function TeacherDashboard() {
               </div>
             )}
 
-            {filteredClasses.length === 0 && !loading && (
+            {filteredClasses.length === 0 && !loading && !error && (
               <div className="text-center py-12">
                 <BookOpen className="w-20 h-20 text-gray-300 mx-auto mb-4" />
                 <h3 className="text-2xl font-medium text-gray-900 mb-2">
