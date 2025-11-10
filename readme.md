@@ -1,78 +1,73 @@
-````md
 # 🎓 Ambil Prestasi
 
-**Ambil Prestasi** adalah platform belajar online terpadu yang dirancang untuk membantu mahasiswa meraih prestasi terbaik mereka melalui **materi pembelajaran berkualitas** dan **bimbingan dari mentor profesional**.  
-Platform ini menghadirkan pengalaman belajar fleksibel yang dapat diakses kapan saja dan di mana saja.
+**Ambil Prestasi** adalah platform belajar online terpadu yang dirancang untuk membantu mahasiswa meraih prestasi terbaik mereka melalui materi pembelajaran berkualitas dan bimbingan dari mentor profesional.  
+Platform ini menghadirkan pengalaman belajar yang fleksibel, memungkinkan mahasiswa belajar kapan saja dan di mana saja.
 
 ---
 
 ## 🚀 Fitur Utama
 
-### 🌱 Untuk Semua Pengguna
-- **Materi pembelajaran lengkap** sesuai kebutuhan pengembangan akademik dan profesional.
-- **Fleksibilitas waktu belajar** — akses materi kapan saja, di mana saja.
-- **Mentor profesional dan berpengalaman** di berbagai bidang keahlian.
+Platform ini menyediakan berbagai fitur untuk mendukung proses pembelajaran digital secara efektif dan interaktif.
+
+- **Materi Pembelajaran Lengkap** — mencakup berbagai topik pengembangan akademik dan profesional.  
+- **Fleksibilitas Waktu Belajar** — akses materi kapan pun tanpa batasan waktu.  
+- **Mentor Profesional** — dibimbing langsung oleh pengajar berpengalaman di bidangnya.
 
 ---
 
 ## 👥 Role dan Hak Akses
 
-Platform ini terdiri dari **tiga role utama** dengan tanggung jawab dan akses berbeda:
+### Admin  
+Admin bertanggung jawab atas pengelolaan struktur utama platform.  
+Dapat melakukan:
+- CRUD Teacher (membuat, membaca, memperbarui, dan menghapus data pengajar).  
+- CRUD Kategori Kelas untuk mengatur pengelompokan konten pembelajaran.
 
-### 🛠️ Admin
-- Mengelola **CRUD Teacher** (membuat, membaca, memperbarui, menghapus data pengajar).  
-- Mengelola **CRUD Kategori Kelas** untuk mengatur pengelompokan konten pembelajaran.
+### Teacher (Pengajar)  
+Teacher memiliki kendali penuh atas konten pembelajaran yang dibuat.  
+Dapat melakukan:
+- CRUD Kelas, Section, Materi, dan Quiz untuk menyusun alur pembelajaran yang sistematis.
 
-### 👨‍🏫 Teacher (Pengajar)
-- Mengelola **CRUD Kelas** yang dibuat.  
-- Mengelola **CRUD Section** untuk membagi materi dalam struktur yang sistematis.  
-- Mengelola **CRUD Materi** (video, teks, atau dokumen pembelajaran).  
-- Mengelola **CRUD Quiz** untuk evaluasi belajar mahasiswa.
-
-### 🎓 Student (Mahasiswa)
-- Melihat **keseluruhan kelas** yang tersedia melalui endpoint `GET /classes`.  
-- Melihat **detail kelas dan materi**.  
-- Untuk **mengakses materi penuh**, mahasiswa perlu **mendaftar paket belajar tertentu**.  
-  Setelah mendaftar, mahasiswa akan mendapatkan **kode referral** yang memungkinkan akses penuh ke semua kelas sesuai **durasi paket** yang dipilih.  
-- Melihat daftar semua mentor atau teacher melalui endpoint `GET /mentor`.
+### Student (Mahasiswa)  
+Student dapat menjelajahi seluruh kelas yang tersedia melalui `GET /classes`, melihat detail kelas dan materi, serta mengakses materi penuh setelah mendaftar paket belajar tertentu.  
+Setiap pendaftaran paket akan memberikan **kode referral** untuk mengakses semua kelas sesuai **durasi paket** yang dipilih.  
+Student juga dapat melihat seluruh mentor melalui `GET /mentor`.
 
 ---
 
 ## 🧩 Arsitektur dan Deployment
 
-- **Frontend:** Dibangun menggunakan [Next.js](https://nextjs.org/) dan dideploy di [Vercel](https://vercel.com/).  
-- **Backend:** Dikembangkan menggunakan [Node.js](https://nodejs.org/) dan dideploy di **Virtual Private Server (VPS)**.  
-- Komunikasi antara frontend dan backend menggunakan RESTful API dengan autentikasi dan kontrol akses berbasis role.
+Frontend dikembangkan menggunakan **Next.js** dan di-deploy melalui **Vercel** untuk memastikan performa tinggi dan skalabilitas.  
+Backend dibangun dengan **Node.js** dan di-deploy menggunakan **Virtual Private Server (VPS)**.  
+Keduanya terhubung melalui RESTful API dengan autentikasi berbasis role.
 
 ---
 
 ## ⚙️ Tech Stack
 
-| Kategori | Teknologi |
-|-----------|------------|
-| **Framework** | Next.js 15.5.3 |
-| **Bahasa** | TypeScript |
-| **Styling** | Tailwind CSS, @tailwindcss/postcss, tw-animate-css |
-| **UI Components** | Radix UI (@radix-ui/*), lucide-react, @tabler/icons-react |
-| **Data Visualization** | recharts |
-| **State Management** | React 19.1.0 |
-| **Drag and Drop** | @dnd-kit/core, @dnd-kit/sortable |
-| **Validation** | zod |
-| **Notifications** | sonner |
-| **Linting** | ESLint with eslint-config-next |
-| **Commit Linting** | commitlint (conventional commits) |
-| **Git Hooks** | husky (pre-commit hooks) |
-| **Build Tool** | Turbopack (`next dev` & `next build`) |
+Framework utama yang digunakan adalah **Next.js 15.5.3** dengan bahasa pemrograman **TypeScript**.  
+Antarmuka dirancang menggunakan **Tailwind CSS**, **Radix UI**, dan ikon dari **lucide-react** serta **@tabler/icons-react**.  
+
+Komponen penting lainnya mencakup:
+- Data visualization menggunakan **recharts**.  
+- State management dengan **React 19.1.0**.  
+- Validasi data menggunakan **zod**.  
+- Fitur drag-and-drop dengan **@dnd-kit/core** dan **@dnd-kit/sortable**.  
+- Sistem notifikasi dengan **sonner**.  
+- Linting dan commit linting menggunakan **ESLint**, **commitlint**, dan **husky**.  
+- Build tool menggunakan **Turbopack** untuk proses development dan build yang lebih cepat.
 
 ---
 
 ## 🧠 Panduan Pengembangan
 
+Proyek ini dapat dijalankan secara lokal dengan langkah-langkah berikut.
+
 ### 1. Clone Repository
 ```bash
 git clone https://github.com/username/ambilprestasi.git
 cd ambilprestasi
-````
+
 
 ### 2. Install Dependencies
 
