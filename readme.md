@@ -94,7 +94,8 @@ npm run start
 
 ### Frontend
 
-* Dideploy otomatis menggunakan [Vercel](https://vercel.com).
+* Dideploy otomatis menggunakan Vercel pada alamat:
+🔗 https://ambilprestasi.vercel.app
 * Build tool menggunakan **Turbopack** untuk performa optimal.
 
 ### Backend
@@ -118,5 +119,3 @@ Dilarang memperbanyak atau mendistribusikan ulang tanpa izin dari pengembang res
 ---
 
 ### ✨ Dibangun dengan semangat kolaborasi dan pembelajaran berkelanjutan.
-
-```
