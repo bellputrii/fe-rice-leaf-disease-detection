@@ -139,14 +139,24 @@ export default function LoginPage() {
 
     try {
       if (isLogin) {
-        // 🔹 Login logic
+        // 🔹 Login logic - menerima username atau email
+        const loginIdentifier = email.trim() // Bisa berupa email atau username
+        
+        // Validasi input tidak boleh kosong
+        if (!loginIdentifier) {
+          setStatus("error")
+          setMessage('Email atau username harus diisi')
+          setTimeout(() => setStatus("idle"), 4000)
+          return
+        }
+
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/login`, {
           method: "POST",
           headers: {
             "Content-Type": "application/x-www-form-urlencoded",
           },
           body: new URLSearchParams({
-            usernameoremail: email,
+            usernameoremail: loginIdentifier,
             password: password,
           }),
         })
@@ -165,6 +175,11 @@ export default function LoginPage() {
         // Simpan token JWT dari backend
         const token = result.data.token
         localStorage.setItem("token", token)
+
+        // Simpan user role untuk navigasi
+        if (result.data.role) {
+          localStorage.setItem("userRole", result.data.role.toLowerCase())
+        }
 
         // Jika ada rememberMe, simpan di localStorage
         if (rememberMe) {
@@ -192,7 +207,7 @@ export default function LoginPage() {
         // Gunakan router.replace bukan router.push untuk menghindari history stack
         switch (userRole) {
           case 'admin':
-            setTimeout(() => router.replace('/teacher'), 500)
+            setTimeout(() => router.replace('/dashboard'), 500) // Diubah dari /dashboard ke /admin
             break
           case 'teacher':
             setTimeout(() => router.replace('/beranda'), 500)
@@ -219,6 +234,15 @@ export default function LoginPage() {
         if (!name.trim() || !username.trim()) {
           setStatus("error")
           setMessage('Nama dan username harus diisi')
+          setTimeout(() => setStatus("idle"), 4000)
+          return
+        }
+
+        // Validasi email format untuk register
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!emailRegex.test(email.trim())) {
+          setStatus("error")
+          setMessage('Format email tidak valid')
           setTimeout(() => setStatus("idle"), 4000)
           return
         }
@@ -496,23 +520,47 @@ export default function LoginPage() {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
-            {/* Email */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-800 mb-2">
-                Email
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                  setEmail(e.target.value)
-                }
-                placeholder="nama@email.com"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0041A3] focus:border-[#0041A3] outline-none transition-all text-gray-900 placeholder-gray-500"
-                required
-                disabled={status === "loading"}
-              />
-            </div>
+            {/* Field untuk login vs register */}
+            {isLogin ? (
+              // 🔹 Untuk LOGIN: Email atau Username
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-2">
+                  Email atau Username
+                </label>
+                <input
+                  type="text"
+                  value={email}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                    setEmail(e.target.value)
+                  }
+                  placeholder="Masukkan email atau username"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0041A3] focus:border-[#0041A3] outline-none transition-all text-gray-900 placeholder-gray-500"
+                  required
+                  disabled={status === "loading"}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Anda bisa menggunakan email atau username untuk login
+                </p>
+              </div>
+            ) : (
+              // 🔹 Untuk REGISTER: Email saja (tetap membutuhkan validasi email)
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-2">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                    setEmail(e.target.value)
+                  }
+                  placeholder="nama@email.com"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0041A3] focus:border-[#0041A3] outline-none transition-all text-gray-900 placeholder-gray-500"
+                  required
+                  disabled={status === "loading"}
+                />
+              </div>
+            )}
 
             {/* Name - hanya untuk register */}
             {!isLogin && (

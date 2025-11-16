@@ -6,20 +6,34 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
+interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  username: string;
+  role: string;
+  profileImage?: string;
+}
+
+interface VerifyRoleResponse {
+  success: boolean;
+  message: string;
+  data: {
+    role: string;
+  };
+}
+
 export default function NavBar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
-  const [userData, setUserData] = useState(null);
+  const [userData, setUserData] = useState<UserProfile | null>(null);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [loading, setLoading] = useState(true);
   const pathname = usePathname();
   const router = useRouter();
-
-  // Cek role dari pathname
-  const isTeacherPage = pathname.includes('/beranda') || pathname.includes('/classes');
-  const isAdminPage = pathname.includes('/admin');
 
   // Effect untuk mendeteksi scroll
   useEffect(() => {
@@ -38,42 +52,131 @@ export default function NavBar() {
   // Effect untuk mengecek status login dan role
   useEffect(() => {
     checkAuthStatus();
-  }, []);
+  }, [pathname]);
+
+  // Fungsi untuk verify role dari API
+  const verifyUserRole = async (token: string): Promise<string | null> => {
+    try {
+      // Untuk demo, kita akan menggunakan data dari localStorage
+      // Dalam implementasi real, Anda akan memanggil API /verify-role
+      // dengan email dan code yang sesuai
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/verify-role`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          return null;
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result: VerifyRoleResponse = await response.json();
+      
+      if (result.success && result.data) {
+        return result.data.role.toLowerCase(); // Convert ke lowercase untuk konsistensi
+      } else {
+        throw new Error(result.message || 'Failed to verify role');
+      }
+    } catch (error) {
+      console.error("Error verifying user role:", error);
+      
+      // Fallback: coba ambil role dari endpoint /me
+      try {
+        const meResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/me`, {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+          },
+        });
+
+        if (meResponse.ok) {
+          const meResult = await meResponse.json();
+          if (meResult.success && meResult.data) {
+            return meResult.data.role.toLowerCase();
+          }
+        }
+      } catch (meError) {
+        console.error("Error fetching user profile:", meError);
+      }
+      
+      return null;
+    }
+  };
 
   // Fungsi untuk mengecek status autentikasi dan role
-  const checkAuthStatus = () => {
-    const token = localStorage.getItem("token");
-    const role = localStorage.getItem("userRole");
-    
-    if (token) {
-      setIsLoggedIn(true);
-      setUserRole(role);
-    } else {
+  const checkAuthStatus = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      const savedUserRole = localStorage.getItem("userRole");
+      const savedUserData = localStorage.getItem("userData");
+      
+      if (token) {
+        // Verify role dari API
+        const verifiedRole = await verifyUserRole(token);
+        
+        if (verifiedRole) {
+          setIsLoggedIn(true);
+          setUserRole(verifiedRole);
+          
+          // Simpan ke localStorage untuk cache
+          localStorage.setItem("userRole", verifiedRole);
+          
+          // Jika ada data user yang disimpan, gunakan itu
+          if (savedUserData) {
+            const parsedData = JSON.parse(savedUserData);
+            setUserData(parsedData);
+          }
+        } else {
+          // Fallback ke data yang disimpan di localStorage
+          if (savedUserRole) {
+            setIsLoggedIn(true);
+            setUserRole(savedUserRole);
+          } else {
+            // Token tidak valid, logout
+            handleCleanLogout();
+          }
+        }
+      } else {
+        setIsLoggedIn(false);
+        setUserRole(null);
+        setUserData(null);
+      }
+    } catch (error) {
+      console.error("Error checking auth status:", error);
       setIsLoggedIn(false);
       setUserRole(null);
+      setUserData(null);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  // Fungsi untuk logout bersih
+  const handleCleanLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("rememberMe");
+    localStorage.removeItem("userRole");
+    localStorage.removeItem("userData");
+    setIsLoggedIn(false);
+    setUserRole(null);
+    setUserData(null);
   };
 
   // Fungsi logout
   const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
-      localStorage.removeItem("token");
-      localStorage.removeItem("rememberMe");
-      localStorage.removeItem("userRole");
-      setIsLoggedIn(false);
-      setUserRole(null);
-      setUserData(null);
+      handleCleanLogout();
       setShowLogoutConfirm(false);
       
-      // Redirect berdasarkan role
-      if (userRole === 'teacher') {
-        router.push("/beranda");
-      } else if (userRole === 'admin') {
-        router.push("/home");
-      } else {
-        router.push("/home");
-      }
+      // Redirect ke home page setelah logout
+      router.push("/home");
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
@@ -91,7 +194,7 @@ export default function NavBar() {
     setShowLogoutConfirm(false);
   };
 
-  // Menu items berdasarkan status login dan role
+  // Menu items berdasarkan status login dan role - DIUBAH untuk Admin
   const getMenuItems = () => {
     // Jika belum login
     if (!isLoggedIn) {
@@ -102,7 +205,7 @@ export default function NavBar() {
       ];
     }
 
-    // Jika sudah login berdasarkan role
+    // Jika sudah login berdasarkan role - DIUBAH untuk Admin
     switch (userRole) {
       case 'student':
         return [
@@ -119,10 +222,11 @@ export default function NavBar() {
         ];
       
       case 'admin':
+        // MENU ADMIN YANG BARU - sesuai permintaan
         return [
           { name: "Dashboard", icon: <Home size={18} />, href: "/admin" },
-          { name: "Kelola Teacher", icon: <Users size={18} />, href: "/admin/teachers" },
-          { name: "Kelola Kategori", icon: <Settings size={18} />, href: "/admin/categories" },
+          { name: "Teacher", icon: <Users size={18} />, href: "/teacher" },
+          { name: "Categories", icon: <Settings size={18} />, href: "/categories" },
         ];
       
       default:
@@ -159,7 +263,7 @@ export default function NavBar() {
     if (userRole === 'teacher') {
       return 'bg-blue-50 border-blue-200';
     } else if (userRole === 'admin') {
-      return 'bg-purple-50 border-purple-200';
+      return 'bg-blue-50 border-blue-200';
     }
     return '';
   };
@@ -176,11 +280,11 @@ export default function NavBar() {
       };
     } else if (userRole === 'admin') {
       return {
-        primary: 'purple',
-        text: 'text-purple-800',
-        bg: 'bg-purple-100',
-        hoverBg: 'bg-purple-200',
-        button: 'bg-purple-600 hover:bg-purple-700'
+        primary: 'blue',
+        text: 'text-blue-800',
+        bg: 'bg-blue-100',
+        hoverBg: 'bg-blue-200',
+        button: 'bg-blue-600 hover:bg-blue-700'
       };
     }
     return {
@@ -192,7 +296,35 @@ export default function NavBar() {
     };
   };
 
+  // Fungsi untuk mendapatkan inisial nama
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(part => part.charAt(0))
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   const roleColors = getRoleColors();
+
+  // Tampilkan loading sederhana
+  if (loading) {
+    return (
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm border-b border-gray-200 py-3">
+        <div className="mx-auto flex items-center justify-between px-4 sm:px-6 lg:px-8 max-w-7xl">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gray-200 rounded animate-pulse"></div>
+            <div className="h-6 w-32 bg-gray-200 rounded animate-pulse"></div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-24 bg-gray-200 rounded animate-pulse"></div>
+            <div className="h-10 w-10 bg-gray-200 rounded animate-pulse"></div>
+          </div>
+        </div>
+      </nav>
+    );
+  }
 
   return (
     <>
@@ -264,15 +396,29 @@ export default function NavBar() {
                   <button className={`flex items-center gap-2 p-2 rounded-lg transition-colors ${roleColors.bg} hover:${roleColors.hoverBg} ${roleColors.text}`}>
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-medium ${
                       userRole === 'teacher' ? "bg-blue-700" : 
-                      userRole === 'admin' ? "bg-purple-700" : 
+                      userRole === 'admin' ? "bg-blue-700" : 
                       "bg-blue-600"
                     }`}>
-                      <User size={16} />
+                      {userData?.profileImage ? (
+                        <Image
+                          src={userData.profileImage}
+                          alt={userData.name}
+                          width={32}
+                          height={32}
+                          className="rounded-full object-cover"
+                        />
+                      ) : userData?.name ? (
+                        getInitials(userData.name)
+                      ) : (
+                        <User size={16} />
+                      )}
                     </div>
                     <span className="text-sm font-medium hidden sm:inline">
-                      {userRole === 'teacher' && 'Teacher'}
-                      {userRole === 'admin' && 'Admin'}
-                      {userRole === 'student' && 'Student'}
+                      {userData?.name || (
+                        userRole === 'teacher' ? 'Teacher' :
+                        userRole === 'admin' ? 'Admin' :
+                        'Student'
+                      )}
                     </span>
                   </button>
                   
@@ -280,14 +426,17 @@ export default function NavBar() {
                   <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                     <div className="px-4 py-3 border-b border-gray-100">
                       <p className="text-sm font-medium text-gray-900">
-                        {userRole === 'teacher' ? 'Teacher Profile' : 
-                         userRole === 'admin' ? 'Admin Profile' : 
-                         'Student Profile'}
+                        {userData?.name || (
+                          userRole === 'teacher' ? 'Teacher Profile' : 
+                          userRole === 'admin' ? 'Admin Profile' : 
+                          'Student Profile'
+                        )}
                       </p>
                       <p className="text-xs text-gray-500 mt-1">
-                        {userRole === 'teacher' ? 'teacher@example.com' : 
-                         userRole === 'admin' ? 'admin@example.com' : 
-                         'student@example.com'}
+                        {userData?.email || `${userRole}@example.com`}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1 capitalize">
+                        Role: {userRole}
                       </p>
                     </div>
                     
@@ -361,21 +510,36 @@ export default function NavBar() {
                     <div className="flex items-center gap-3 py-3 px-4 rounded-lg bg-gray-100 border border-gray-200">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${
                         userRole === 'teacher' ? "bg-blue-700" : 
-                        userRole === 'admin' ? "bg-purple-700" : 
+                        userRole === 'admin' ? "bg-blue-700" : 
                         "bg-blue-600"
                       }`}>
-                        <User size={16} />
+                        {userData?.profileImage ? (
+                          <Image
+                            src={userData.profileImage}
+                            alt={userData.name}
+                            width={32}
+                            height={32}
+                            className="rounded-full object-cover"
+                          />
+                        ) : userData?.name ? (
+                          getInitials(userData.name)
+                        ) : (
+                          <User size={16} />
+                        )}
                       </div>
                       <div>
                         <p className="text-sm font-medium text-gray-900">
-                          {userRole === 'teacher' ? 'Teacher Profile' : 
-                           userRole === 'admin' ? 'Admin Profile' : 
-                           'Student Profile'}
+                          {userData?.name || (
+                            userRole === 'teacher' ? 'Teacher Profile' : 
+                            userRole === 'admin' ? 'Admin Profile' : 
+                            'Student Profile'
+                          )}
                         </p>
                         <p className="text-xs text-gray-500">
-                          {userRole === 'teacher' ? 'teacher@example.com' : 
-                           userRole === 'admin' ? 'admin@example.com' : 
-                           'student@example.com'}
+                          {userData?.email || `${userRole}@example.com`}
+                        </p>
+                        <p className="text-xs text-gray-400 capitalize">
+                          Role: {userRole}
                         </p>
                       </div>
                     </div>

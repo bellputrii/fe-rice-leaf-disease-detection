@@ -906,7 +906,7 @@ export default function TeacherHome() {
               </div>
               
               <p className="text-gray-600 mb-6">
-                Apakah Anda yakin ingin menghapus kelas <span className="font-semibold text-gray-900">"{showDeleteConfirm.className}"</span>? Tindakan ini tidak dapat dibatalkan.
+                Apakah Anda yakin ingin menghapus kelas <span className="font-semibold text-gray-900">`{showDeleteConfirm.className}`</span>? Tindakan ini tidak dapat dibatalkan.
               </p>
 
               <div className="flex gap-3 justify-end">
