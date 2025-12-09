@@ -5,7 +5,7 @@
 import { useState, FormEvent, ChangeEvent, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { LogIn, Eye, EyeOff, Mail, Lock } from 'lucide-react';
+import { LogIn, Eye, EyeOff, Mail, Lock, AlertCircle, CheckCircle } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -202,7 +202,7 @@ export default function LoginPage() {
   // Tampilkan loading saat mengecek auth
   if (isCheckingAuth) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600">Memeriksa autentikasi...</p>
@@ -212,158 +212,222 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      <div className="bg-white rounded-xl shadow-sm p-8 max-w-md w-full">
-        {/* Logo */}
-        <div className="flex items-center justify-center gap-3 mb-8">
-          <div className="w-10 h-10 bg-emerald-500 rounded-2xl flex items-center justify-center">
-            <span className="text-white font-bold">P</span>
-          </div>
-          <div className="text-center">
-            <h1 className="text-xl font-bold text-gray-900 leading-tight">PadiCheck AI</h1>
-            <p className="text-xs text-gray-500 -mt-0.5">Disease Detection</p>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-8">
+      <div className="bg-white rounded-xl shadow-sm w-full max-w-md">
+        {/* Logo Section */}
+        <div className="px-6 pt-8 pb-6 border-b border-gray-100">
+          <div className="flex flex-col items-center justify-center gap-4">
+            <div className="w-16 h-16 bg-emerald-500 rounded-2xl flex items-center justify-center shadow-md">
+              <span className="text-white text-2xl font-bold">P</span>
+            </div>
+            <div className="text-center">
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 leading-tight">PadiCheck AI</h1>
+              <p className="text-sm text-gray-500 mt-1">Disease Detection System</p>
+            </div>
           </div>
         </div>
 
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome Back</h1>
-          <p className="text-gray-600">Sign in to your account to continue</p>
-        </div>
-
-        {/* Status Messages */}
-        {status === "success" && (
-          <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-lg mb-6">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-              <span className="text-sm font-medium">{message}</span>
-            </div>
+        {/* Content */}
+        <div className="px-6 py-8">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">Selamat Datang</h2>
+            <p className="text-gray-600 text-sm md:text-base">Masuk ke akun Anda untuk melanjutkan</p>
           </div>
-        )}
-        {status === "error" && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-              <span className="text-sm font-medium">{message}</span>
-            </div>
-          </div>
-        )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-4">
-            {/* Email Input */}
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Email Address
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  required
-                  disabled={status === "loading"}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-                  placeholder="Enter your email"
-                />
+          {/* Status Messages */}
+          {status === "success" && (
+            <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-lg mb-6">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="h-5 w-5 flex-shrink-0" />
+                <span className="text-sm font-medium">{message}</span>
+              </div>
+            </div>
+          )}
+          {status === "error" && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="h-5 w-5 flex-shrink-0" />
+                <span className="text-sm font-medium">{message}</span>
+              </div>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-5">
+              {/* Email Input */}
+              <div className="space-y-2">
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                  Alamat Email
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Mail className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    required
+                    disabled={status === "loading"}
+                    className="block w-full pl-10 pr-3 py-3.5 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed placeholder:text-gray-400"
+                    placeholder="contoh@email.com"
+                    autoComplete="email"
+                    inputMode="email"
+                  />
+                </div>
+              </div>
+
+              {/* Password Input */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                    Kata Sandi
+                  </label>
+                  <Link 
+                    href="/auth/forgot-password" 
+                    className="text-xs text-emerald-600 hover:text-emerald-500 font-medium"
+                  >
+                    Lupa password?
+                  </Link>
+                </div>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Lock className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    id="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    required
+                    disabled={status === "loading"}
+                    className="block w-full pl-10 pr-12 py-3.5 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed placeholder:text-gray-400"
+                    placeholder="Masukkan kata sandi"
+                    autoComplete="current-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    disabled={status === "loading"}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                    ) : (
+                      <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Remember Me */}
+              <div className="flex items-center">
+                <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    id="remember"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    disabled={status === "loading"}
+                    className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded disabled:opacity-50"
+                  />
+                  <span className="text-sm text-gray-700">Ingat saya</span>
+                </label>
               </div>
             </div>
 
-            {/* Password Input */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  id="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  required
-                  disabled={status === "loading"}
-                  className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-                  placeholder="Enter your password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  disabled={status === "loading"}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 disabled:opacity-50"
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </button>
-              </div>
-            </div>
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={status === "loading"}
+              className={`
+                w-full py-4 px-4 rounded-lg font-semibold text-base
+                transition-all duration-200
+                flex items-center justify-center gap-2
+                ${status === "loading"
+                  ? 'bg-emerald-400 cursor-not-allowed'
+                  : 'bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white'
+                }
+                active:transform active:scale-[0.98]
+                disabled:opacity-50 disabled:cursor-not-allowed
+              `}
+            >
+              {status === "loading" ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Memproses...</span>
+                </>
+              ) : (
+                <>
+                  <LogIn className="h-5 w-5" />
+                  <span>Masuk</span>
+                </>
+              )}
+            </button>
 
-            {/* Remember Me & Forgot Password */}
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  id="remember"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  disabled={status === "loading"}
-                  className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded disabled:opacity-50"
-                />
-                <span className="text-sm text-gray-700">Remember me</span>
-              </label>
-              
-              <Link 
-                href="/auth/forgot-password" 
-                className="text-sm text-emerald-600 hover:text-emerald-500 font-medium"
-              >
-                Forgot password?
-              </Link>
+            {/* Demo Credentials Hint (Mobile Only) */}
+            <div className="lg:hidden bg-blue-50 border border-blue-100 rounded-lg p-4">
+              <p className="text-sm text-blue-700">
+                <span className="font-semibold">Demo:</span> demo@example.com / demo123
+              </p>
             </div>
-          </div>
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={status === "loading"}
-            className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-300 flex items-center justify-center gap-2 ${
-              status === "loading"
-                ? 'bg-emerald-400 cursor-not-allowed'
-                : 'bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white'
-            }`}
-          >
-            {status === "loading" ? (
-              <>
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                <span>Signing in...</span>
-              </>
-            ) : (
-              <>
-                <LogIn className="h-5 w-5" />
-                <span>Sign In</span>
-              </>
-            )}
-          </button>
+          </form>
 
           {/* Register Link */}
-          <div className="text-center pt-4 border-t border-gray-100">
+          <div className="mt-8 pt-6 border-t border-gray-100 text-center">
             <p className="text-gray-600 text-sm">
-              Don`t have an account?{' '}
+              Belum punya akun?{' '}
               <Link 
                 href="/auth/register" 
-                className="text-emerald-600 font-medium hover:text-emerald-500"
+                className="text-emerald-600 font-semibold hover:text-emerald-500 hover:underline"
               >
-                Create an account
+                Daftar Sekarang
               </Link>
             </p>
           </div>
-        </form>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-xl">
+          <p className="text-xs text-gray-500 text-center">
+            © {new Date().getFullYear()} PadiCheck AI. Semua hak dilindungi.
+          </p>
+        </div>
       </div>
+
+      {/* Responsive CSS untuk mencegah zoom di iOS */}
+      <style jsx global>{`
+        /* Pastikan input tidak zoom di iOS */
+        @media screen and (max-width: 768px) {
+          input, select, textarea {
+            font-size: 16px !important;
+          }
+          
+          /* Improve touch targets */
+          button, 
+          [role="button"], 
+          input[type="submit"], 
+          input[type="reset"] {
+            min-height: 44px;
+          }
+        }
+        
+        /* Improve form accessibility */
+        input:focus, 
+        button:focus {
+          outline: 2px solid #10b981;
+          outline-offset: 2px;
+        }
+        
+        /* Smooth transitions */
+        * {
+          transition: background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+        }
+      `}</style>
     </div>
   );
 }

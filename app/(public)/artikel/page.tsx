@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // app/(public)/artikel/page.tsx
 'use client';
 
@@ -60,6 +61,14 @@ interface ArticleFormData {
   diseaseId: number;
 }
 
+interface ValidationErrors {
+  title?: string;
+  slug?: string;
+  category?: string;
+  author?: string;
+  description?: string;
+}
+
 export default function ArticlesPage() {
   const [activeMenu, setActiveMenu] = useState('artikel');
   const [articles, setArticles] = useState<Article[]>([]);
@@ -83,6 +92,7 @@ export default function ArticlesPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [crudLoading, setCrudLoading] = useState(false);
   const [crudError, setCrudError] = useState<string | null>(null);
+  const [crudSuccess, setCrudSuccess] = useState<string | null>(null);
   const [formData, setFormData] = useState<ArticleFormData>({
     title: '',
     slug: '',
@@ -97,6 +107,9 @@ export default function ArticlesPage() {
     thumbnailUrl: '',
     diseaseId: 0
   });
+
+  // Validation states
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
 
   // Show More states
   const [displayCount, setDisplayCount] = useState(6);
@@ -449,8 +462,8 @@ export default function ArticlesPage() {
     const handleClickOutside = (event: MouseEvent) => {
       if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
         if (isModalOpen) closeModal();
-        if (isCreateModalOpen) setIsCreateModalOpen(false);
-        if (isEditModalOpen) setIsEditModalOpen(false);
+        if (isCreateModalOpen) handleCloseCreateModal();
+        if (isEditModalOpen) handleCloseEditModal();
         if (isDeleteModalOpen) setIsDeleteModalOpen(false);
       }
     };
@@ -458,6 +471,40 @@ export default function ArticlesPage() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isModalOpen, isCreateModalOpen, isEditModalOpen, isDeleteModalOpen]);
+
+  // Validation function
+  const validateForm = (): boolean => {
+    const errors: ValidationErrors = {};
+    
+    if (!formData.title.trim()) {
+      errors.title = 'Judul artikel harus diisi';
+    } else if (formData.title.length < 5) {
+      errors.title = 'Judul artikel minimal 5 karakter';
+    }
+    
+    if (!formData.slug.trim()) {
+      errors.slug = 'Slug artikel harus diisi';
+    } else if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(formData.slug)) {
+      errors.slug = 'Slug hanya boleh mengandung huruf kecil, angka, dan tanda hubung';
+    }
+    
+    if (!formData.category.trim()) {
+      errors.category = 'Kategori harus dipilih';
+    }
+    
+    if (!formData.author.trim()) {
+      errors.author = 'Penulis harus diisi';
+    }
+    
+    if (!formData.description.trim()) {
+      errors.description = 'Deskripsi harus diisi';
+    } else if (formData.description.length < 20) {
+      errors.description = 'Deskripsi minimal 20 karakter';
+    }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   // CRUD Functions
   const openCreateModal = () => {
@@ -475,8 +522,17 @@ export default function ArticlesPage() {
       thumbnailUrl: '',
       diseaseId: 0
     });
+    setValidationErrors({});
     setCrudError(null);
+    setCrudSuccess(null);
     setIsCreateModalOpen(true);
+  };
+
+  const handleCloseCreateModal = () => {
+    setIsCreateModalOpen(false);
+    setValidationErrors({});
+    setCrudError(null);
+    setCrudSuccess(null);
   };
 
   const openEditModal = (article: ArticleDetail) => {
@@ -494,12 +550,23 @@ export default function ArticlesPage() {
       thumbnailUrl: article.thumbnailUrl,
       diseaseId: article.diseaseId || 0
     });
+    setValidationErrors({});
     setCrudError(null);
+    setCrudSuccess(null);
     setIsEditModalOpen(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false);
+    setValidationErrors({});
+    setCrudError(null);
+    setCrudSuccess(null);
   };
 
   const openDeleteModal = (article: ArticleDetail) => {
     setSelectedArticle(article);
+    setCrudError(null);
+    setCrudSuccess(null);
     setIsDeleteModalOpen(true);
   };
 
@@ -509,9 +576,21 @@ export default function ArticlesPage() {
       ...prev,
       [name]: name === 'diseaseId' ? parseInt(value) || 0 : value
     }));
+    
+    // Clear validation error for this field
+    if (validationErrors[name as keyof ValidationErrors]) {
+      setValidationErrors(prev => ({
+        ...prev,
+        [name]: undefined
+      }));
+    }
   };
 
   const handleCreateArticle = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
     const token = getToken();
     if (!token) {
       setCrudError('Anda belum login. Silakan login terlebih dahulu.');
@@ -520,6 +599,7 @@ export default function ArticlesPage() {
 
     setCrudLoading(true);
     setCrudError(null);
+    setCrudSuccess(null);
 
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/articles`, {
@@ -532,25 +612,36 @@ export default function ArticlesPage() {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
 
       const result = await response.json();
       console.log('Article created:', result);
 
-      // Refresh articles
-      await fetchArticles();
-      setIsCreateModalOpen(false);
-      setCrudLoading(false);
-    } catch (error) {
+      // Show success message
+      setCrudSuccess('Artikel berhasil dibuat!');
+      
+      // Refresh articles after 1.5 seconds
+      setTimeout(async () => {
+        await fetchArticles();
+        handleCloseCreateModal();
+        setCrudLoading(false);
+      }, 1500);
+
+    } catch (error: any) {
       console.error('Error creating article:', error);
-      setCrudError('Gagal membuat artikel. Silakan coba lagi.');
+      setCrudError(error.message || 'Gagal membuat artikel. Silakan coba lagi.');
       setCrudLoading(false);
     }
   };
 
   const handleUpdateArticle = async () => {
     if (!selectedArticle) return;
+    
+    if (!validateForm()) {
+      return;
+    }
 
     const token = getToken();
     if (!token) {
@@ -560,6 +651,7 @@ export default function ArticlesPage() {
 
     setCrudLoading(true);
     setCrudError(null);
+    setCrudSuccess(null);
 
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/articles/${selectedArticle.id}`, {
@@ -572,20 +664,27 @@ export default function ArticlesPage() {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
 
       const result = await response.json();
       console.log('Article updated:', result);
 
-      // Refresh articles and close modals
-      await fetchArticles();
-      setIsEditModalOpen(false);
-      closeModal();
-      setCrudLoading(false);
-    } catch (error) {
+      // Show success message
+      setCrudSuccess('Artikel berhasil diperbarui!');
+      
+      // Refresh articles and close modals after 1.5 seconds
+      setTimeout(async () => {
+        await fetchArticles();
+        handleCloseEditModal();
+        closeModal();
+        setCrudLoading(false);
+      }, 1500);
+
+    } catch (error: any) {
       console.error('Error updating article:', error);
-      setCrudError('Gagal mengupdate artikel. Silakan coba lagi.');
+      setCrudError(error.message || 'Gagal mengupdate artikel. Silakan coba lagi.');
       setCrudLoading(false);
     }
   };
@@ -601,6 +700,7 @@ export default function ArticlesPage() {
 
     setCrudLoading(true);
     setCrudError(null);
+    setCrudSuccess(null);
 
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/articles/${selectedArticle.id}`, {
@@ -611,20 +711,27 @@ export default function ArticlesPage() {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
 
       const result = await response.json();
       console.log('Article deleted:', result);
 
-      // Refresh articles and close modals
-      await fetchArticles();
-      setIsDeleteModalOpen(false);
-      closeModal();
-      setCrudLoading(false);
-    } catch (error) {
+      // Show success message
+      setCrudSuccess('Artikel berhasil dihapus!');
+      
+      // Refresh articles and close modals after 1.5 seconds
+      setTimeout(async () => {
+        await fetchArticles();
+        setIsDeleteModalOpen(false);
+        closeModal();
+        setCrudLoading(false);
+      }, 1500);
+
+    } catch (error: any) {
       console.error('Error deleting article:', error);
-      setCrudError('Gagal menghapus artikel. Silakan coba lagi.');
+      setCrudError(error.message || 'Gagal menghapus artikel. Silakan coba lagi.');
       setCrudLoading(false);
     }
   };
@@ -637,21 +744,21 @@ export default function ArticlesPage() {
   // Don't render anything until component is mounted
   if (!mounted) {
     return (
-      <div className="flex min-h-screen bg-gray-50">
+      <div className="flex min-h-screen bg-white">
         <div className="w-64"></div>
         <div className="ml-64 flex-1">
           <main className="p-6">
             <div className="h-8 w-48 bg-gray-200 rounded animate-pulse mb-6"></div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-300 overflow-hidden">
                   <div className="h-40 bg-gray-200 animate-pulse"></div>
                   <div className="p-5 space-y-3">
                     <div className="h-4 w-20 bg-gray-200 rounded animate-pulse"></div>
                     <div className="h-6 w-full bg-gray-200 rounded animate-pulse"></div>
                     <div className="h-12 w-full bg-gray-200 rounded animate-pulse"></div>
                     <div className="h-4 w-32 bg-gray-200 rounded animate-pulse"></div>
-                  </div>
+                </div>
                 </div>
               ))}
             </div>
@@ -665,7 +772,7 @@ export default function ArticlesPage() {
 
   return (
     <>
-      <div className="flex min-h-screen bg-gray-50">
+      <div className="flex min-h-screen bg-white">
         {/* Mobile Sidebar Overlay */}
         {sidebarOpen && (
           <div 
@@ -685,11 +792,11 @@ export default function ArticlesPage() {
         
         <div className="flex-1 md:ml-64">
           {/* Mobile Header */}
-          <div className="md:hidden sticky top-0 z-30 bg-white border-b border-gray-200 px-4 py-3">
+          <div className="md:hidden sticky top-0 z-30 bg-white border-b border-gray-300 px-4 py-3">
             <div className="flex items-center justify-between">
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="p-2 text-gray-600 hover:text-gray-900"
+                className="p-2 text-gray-700 hover:text-gray-900"
               >
                 <Menu className="w-6 h-6" />
               </button>
@@ -705,21 +812,21 @@ export default function ArticlesPage() {
           
           <main className="p-4 md:p-6 space-y-6">
             {/* Header Section */}
-            <div className="bg-white rounded-xl shadow-sm p-4 md:p-6">
+            <div className="bg-white rounded-xl shadow-sm p-4 md:p-6 border border-gray-300">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
                 <div>
                   <h1 className="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-2">
-                    <BookOpen className="w-5 h-5 md:w-6 md:h-6 text-emerald-600" />
+                    <BookOpen className="w-5 h-5 md:w-6 md:h-6 text-green-600" />
                     Artikel & Panduan
                   </h1>
-                  <p className="text-gray-600 text-sm md:text-base mt-1">
+                  <p className="text-gray-700 text-sm md:text-base mt-1">
                     Kumpulan artikel dan panduan lengkap tentang penyakit padi dan cara penanganannya
                   </p>
-                  <div className="flex flex-wrap items-center gap-2 mt-2 text-sm text-gray-500">
-                    <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-md font-medium text-xs md:text-sm">
+                  <div className="flex flex-wrap items-center gap-2 mt-2 text-sm text-gray-600">
+                    <span className="bg-green-100 text-green-800 px-2 py-1 rounded-md font-medium text-xs md:text-sm">
                       {filteredArticles.length} Artikel Tersedia
                     </span>
-                    <span className="hidden md:inline text-gray-400">•</span>
+                    <span className="hidden md:inline text-gray-500">•</span>
                     <span className="text-xs md:text-sm">Menampilkan {Math.min(displayCount, filteredArticles.length)} artikel</span>
                   </div>
                 </div>
@@ -727,7 +834,7 @@ export default function ArticlesPage() {
                   {isAdmin && (
                     <button
                       onClick={openCreateModal}
-                      className="flex items-center gap-2 px-3 py-2 md:px-4 md:py-2 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition-colors shadow-sm hover:shadow-md text-sm md:text-base w-full md:w-auto justify-center"
+                      className="flex items-center gap-2 px-3 py-2 md:px-4 md:py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors shadow-sm hover:shadow-md text-sm md:text-base w-full md:w-auto justify-center"
                     >
                       <Plus className="w-4 h-4" />
                       Tambah Artikel
@@ -738,8 +845,8 @@ export default function ArticlesPage() {
                     disabled={refreshing}
                     className={`flex items-center gap-2 px-3 py-2 md:px-4 md:py-2 rounded-lg text-sm font-medium transition-colors w-full md:w-auto justify-center ${
                       refreshing
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                        ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                        : 'bg-green-100 text-green-700 hover:bg-green-200'
                     }`}
                   >
                     <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
@@ -753,21 +860,21 @@ export default function ArticlesPage() {
                 {/* Search Bar */}
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Search className="h-5 w-5 text-gray-400" />
+                    <Search className="h-5 w-5 text-gray-500" />
                   </div>
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Cari artikel..."
-                    className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm md:text-base"
+                    className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm md:text-base"
                   />
                   {searchQuery && (
                     <button
                       onClick={() => setSearchQuery('')}
                       className="absolute inset-y-0 right-0 pr-3 flex items-center"
                     >
-                      <X className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                      <X className="h-5 w-5 text-gray-500 hover:text-gray-700" />
                     </button>
                   )}
                 </div>
@@ -784,8 +891,8 @@ export default function ArticlesPage() {
                       onClick={() => setSelectedCategory(category)}
                       className={`px-3 py-1.5 rounded-lg text-xs md:text-sm font-medium transition-colors ${
                         selectedCategory === category
-                          ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          ? 'bg-green-100 text-green-800 border border-green-300'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
                     >
                       {category}
@@ -817,7 +924,7 @@ export default function ArticlesPage() {
             {loading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                 {[...Array(6)].map((_, i) => (
-                  <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden animate-pulse">
+                  <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-300 overflow-hidden animate-pulse">
                     <div className="h-40 bg-gray-200"></div>
                     <div className="p-4 md:p-5 space-y-3">
                       <div className="flex justify-between">
@@ -840,7 +947,7 @@ export default function ArticlesPage() {
                       {displayedArticles.map((article) => (
                         <div 
                           key={article.id} 
-                          className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow cursor-pointer group"
+                          className="bg-white rounded-xl shadow-sm border border-gray-300 overflow-hidden hover:shadow-md transition-shadow cursor-pointer group"
                           onClick={() => handleArticleClick(article.slug)}
                         >
                           {/* Article Thumbnail */}
@@ -849,10 +956,10 @@ export default function ArticlesPage() {
                               className="absolute inset-0 bg-cover bg-center group-hover:scale-105 transition-transform duration-300"
                               style={{ 
                                 backgroundImage: `url(${article.thumbnailUrl})`,
-                                backgroundColor: '#10B981'
+                                backgroundColor: '#059669'
                               }}
                             />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                            <div className="absolute inset-0 bg-black/30" />
                             <div className="absolute top-4 left-4">
                               <span
                                 className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md font-medium ${getCategoryColor(article.category)} border`}
@@ -872,18 +979,18 @@ export default function ArticlesPage() {
                           {/* Article Content */}
                           <div className="p-4 md:p-5 flex flex-col gap-3">
                             {/* Title */}
-                            <h3 className="font-bold text-gray-900 text-base md:text-lg leading-tight line-clamp-2 group-hover:text-emerald-700 transition-colors">
+                            <h3 className="font-bold text-gray-900 text-base md:text-lg leading-tight line-clamp-2 group-hover:text-green-700 transition-colors">
                               {article.title}
                             </h3>
 
                             {/* Description */}
-                            <p className="text-gray-600 text-sm leading-relaxed line-clamp-2 md:line-clamp-3">
+                            <p className="text-gray-700 text-sm leading-relaxed line-clamp-2 md:line-clamp-3">
                               {article.description}
                             </p>
 
                             {/* Footer Info */}
-                            <div className="flex items-center justify-between pt-3 border-t border-gray-100 mt-2">
-                              <div className="flex items-center gap-3 text-xs text-gray-500">
+                            <div className="flex items-center justify-between pt-3 border-t border-gray-200 mt-2">
+                              <div className="flex items-center gap-3 text-xs text-gray-600">
                                 <span className="flex items-center gap-1">
                                   <Clock className="w-3 h-3" />
                                   {article.readTime}
@@ -893,7 +1000,7 @@ export default function ArticlesPage() {
                                   {article.date}
                                 </span>
                               </div>
-                              <div className="text-emerald-600 group-hover:text-emerald-700 font-medium text-sm inline-flex items-center gap-1">
+                              <div className="text-green-600 group-hover:text-green-700 font-medium text-sm inline-flex items-center gap-1">
                                 Baca
                                 <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                               </div>
@@ -911,8 +1018,8 @@ export default function ArticlesPage() {
                           disabled={showMoreLoading}
                           className={`flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 rounded-xl font-medium transition-colors w-full sm:w-auto justify-center ${
                             showMoreLoading
-                              ? 'bg-emerald-100 text-emerald-400 cursor-not-allowed'
-                              : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm hover:shadow-md'
+                              ? 'bg-green-100 text-green-500 cursor-not-allowed'
+                              : 'bg-green-600 text-white hover:bg-green-700 shadow-sm hover:shadow-md'
                           }`}
                         >
                           {showMoreLoading ? (
@@ -936,7 +1043,7 @@ export default function ArticlesPage() {
                       <div className="flex justify-center pt-2">
                         <button
                           onClick={() => setDisplayCount(6)}
-                          className="text-emerald-600 hover:text-emerald-700 font-medium text-sm flex items-center gap-1"
+                          className="text-green-600 hover:text-green-700 font-medium text-sm flex items-center gap-1"
                         >
                           <ChevronDown className="w-4 h-4 rotate-180" />
                           <span>Tampilkan Lebih Sedikit</span>
@@ -947,9 +1054,9 @@ export default function ArticlesPage() {
                 ) : (
                   /* No Results State */
                   <div className="text-center py-12">
-                    <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">Tidak ada artikel ditemukan</h3>
-                    <p className="text-gray-600 max-w-md mx-auto">
+                    <p className="text-gray-700 max-w-md mx-auto">
                       {searchQuery || selectedCategory !== 'Semua' 
                         ? `Tidak ada artikel yang cocok dengan pencarian "${searchQuery}"${selectedCategory !== 'Semua' ? ` dan kategori "${selectedCategory}"` : ''}.`
                         : 'Artikel akan segera tersedia. Silakan coba lagi nanti atau hubungi administrator untuk informasi lebih lanjut.'}
@@ -960,7 +1067,7 @@ export default function ArticlesPage() {
                           setSearchQuery('');
                           setSelectedCategory('Semua');
                         }}
-                        className="mt-4 px-4 py-2 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition-colors"
+                        className="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors"
                       >
                         Reset Filter
                       </button>
@@ -969,22 +1076,22 @@ export default function ArticlesPage() {
                 )}
 
                 {/* Info Section */}
-                <div className="bg-white rounded-xl shadow-sm p-4 md:p-6 border border-emerald-100">
+                <div className="bg-white rounded-xl shadow-sm p-4 md:p-6 border border-green-100">
                   <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                    <Globe className="w-5 h-5 text-emerald-600" />
+                    <Globe className="w-5 h-5 text-green-600" />
                     Tips Membaca Artikel
                   </h3>
-                  <ul className="text-sm text-gray-600 space-y-2 ml-5">
+                  <ul className="text-sm text-gray-700 space-y-2 ml-5">
                     <li className="flex items-start gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 flex-shrink-0"></div>
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-500 mt-1.5 flex-shrink-0"></div>
                       <span>Pilih artikel berdasarkan kategori penyakit yang ingin dipelajari</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 flex-shrink-0"></div>
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-500 mt-1.5 flex-shrink-0"></div>
                       <span>Baca artikel secara lengkap untuk pemahaman yang lebih baik</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 flex-shrink-0"></div>
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-500 mt-1.5 flex-shrink-0"></div>
                       <span>Terapkan pengetahuan dari artikel dengan bijak di lahan pertanian</span>
                     </li>
                   </ul>
@@ -1010,10 +1117,10 @@ export default function ArticlesPage() {
               {/* Modal Content */}
               <div 
                 ref={modalRef}
-                className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-gray-200"
+                className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-gray-300"
               >
                 {/* Modal Header */}
-                <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm px-4 md:px-6 pt-4 md:pt-6 pb-3 md:pb-4 border-b border-gray-200">
+                <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm px-4 md:px-6 pt-4 md:pt-6 pb-3 md:pb-4 border-b border-gray-300">
                   <div className="flex justify-between items-start gap-2 md:gap-4">
                     <div className="flex-1 min-w-0">
                       {/* Category and Date */}
@@ -1024,7 +1131,7 @@ export default function ArticlesPage() {
                             {selectedArticle?.category}
                           </span>
                         </span>
-                        <div className="flex items-center flex-wrap gap-2 text-xs text-gray-500">
+                        <div className="flex items-center flex-wrap gap-2 text-xs text-gray-600">
                           <span className="flex items-center gap-1.5">
                             <User className="w-3.5 h-3.5" />
                             <span className="truncate max-w-[100px] md:max-w-none">
@@ -1048,13 +1155,13 @@ export default function ArticlesPage() {
                       </h2>
                       
                       {/* Description */}
-                      <p className="text-gray-600 text-xs md:text-sm leading-relaxed pr-6 md:pr-8 line-clamp-2 md:line-clamp-none">
+                      <p className="text-gray-700 text-xs md:text-sm leading-relaxed pr-6 md:pr-8 line-clamp-2 md:line-clamp-none">
                         {selectedArticle?.description}
                       </p>
                     </div>
                     <button
                       onClick={closeModal}
-                      className="flex-shrink-0 rounded-lg p-1 md:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors -mt-1 -mr-1 md:-mt-1 md:-mr-2"
+                      className="flex-shrink-0 rounded-lg p-1 md:p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors -mt-1 -mr-1 md:-mt-1 md:-mr-2"
                       aria-label="Tutup modal"
                     >
                       <X className="w-4 h-4 md:w-5 md:h-5" />
@@ -1080,9 +1187,9 @@ export default function ArticlesPage() {
                   {modalError && !modalLoading && (
                     <div className="px-4 md:px-6 py-6 md:py-8">
                       <div className="bg-red-50 border border-red-200 rounded-xl p-4 md:p-6 text-center">
-                        <AlertTriangle className="h-8 md:h-12 w-8 md:w-12 text-red-400 mx-auto mb-3" />
+                        <AlertTriangle className="h-8 md:h-12 w-8 md:w-12 text-red-500 mx-auto mb-3" />
                         <h3 className="text-red-800 font-medium mb-2 text-sm md:text-base">Gagal Memuat Artikel</h3>
-                        <p className="text-red-600 text-xs md:text-sm mb-4">{modalError}</p>
+                        <p className="text-red-700 text-xs md:text-sm mb-4">{modalError}</p>
                         <button
                           onClick={closeModal}
                           className="px-3 py-1.5 md:px-4 md:py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors text-sm"
@@ -1100,10 +1207,10 @@ export default function ArticlesPage() {
                       {selectedArticle.thumbnailUrl && (
                         <div className="mb-3 md:mb-4">
                           <div className="flex items-center gap-2 mb-1 md:mb-2">
-                            <ImageIcon className="w-3 h-3 md:w-4 md:h-4 text-gray-500" />
+                            <ImageIcon className="w-3 h-3 md:w-4 md:h-4 text-gray-600" />
                             <span className="text-xs md:text-sm font-medium text-gray-700">Gambar Ilustrasi</span>
                           </div>
-                          <div className="relative h-32 md:h-48 rounded-lg overflow-hidden border border-gray-200">
+                          <div className="relative h-32 md:h-48 rounded-lg overflow-hidden border border-gray-300">
                             <img
                               src={selectedArticle.thumbnailUrl}
                               alt={selectedArticle.title}
@@ -1118,25 +1225,25 @@ export default function ArticlesPage() {
                       )}
 
                       {/* Disease Information Card */}
-                      <div className="bg-gradient-to-r from-emerald-50 to-green-50 rounded-xl p-3 md:p-5 border border-emerald-100">
+                      <div className="bg-green-50 rounded-xl p-3 md:p-5 border border-green-200">
                         <div className="flex items-start gap-2 md:gap-3 mb-3 md:mb-4">
-                          <div className="p-1.5 md:p-2 bg-emerald-100 rounded-lg flex-shrink-0">
-                            <Thermometer className="w-4 h-4 md:w-5 md:h-5 text-emerald-600" />
+                          <div className="p-1.5 md:p-2 bg-green-100 rounded-lg flex-shrink-0">
+                            <Thermometer className="w-4 h-4 md:w-5 md:h-5 text-green-600" />
                           </div>
                           <div>
-                            <h3 className="font-semibold text-emerald-800 mb-1 text-sm md:text-base">Informasi Penyakit</h3>
-                            <p className="text-emerald-600 text-xs md:text-sm">Detail penyakit yang dibahas dalam artikel ini</p>
+                            <h3 className="font-semibold text-green-800 mb-1 text-sm md:text-base">Informasi Penyakit</h3>
+                            <p className="text-green-700 text-xs md:text-sm">Detail penyakit yang dibahas dalam artikel ini</p>
                           </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                          <div className="bg-white/50 rounded-lg p-3 md:p-4 border border-emerald-200">
-                            <p className="text-xs font-medium text-emerald-700 mb-1">Nama Penyakit</p>
+                          <div className="bg-white rounded-lg p-3 md:p-4 border border-green-300">
+                            <p className="text-xs font-medium text-green-700 mb-1">Nama Penyakit</p>
                             <p className="text-gray-900 font-medium text-sm md:text-base truncate">
                               {selectedArticle.disease?.name || selectedArticle.category || 'Tidak Diketahui'}
                             </p>
                           </div>
-                          <div className="bg-white/50 rounded-lg p-3 md:p-4 border border-emerald-200">
-                            <p className="text-xs font-medium text-emerald-700 mb-1">Kode Penyakit</p>
+                          <div className="bg-white rounded-lg p-3 md:p-4 border border-green-300">
+                            <p className="text-xs font-medium text-green-700 mb-1">Kode Penyakit</p>
                             <p className="text-gray-900 font-medium font-mono text-sm md:text-base truncate">
                               {selectedArticle.disease?.code || selectedArticle.category?.toLowerCase().replace(/\s+/g, '_') || 'unknown'}
                             </p>
@@ -1152,7 +1259,7 @@ export default function ArticlesPage() {
                           </div>
                           <h3 className="font-semibold text-gray-900 text-base md:text-lg">Gejala yang Terlihat</h3>
                         </div>
-                        <div className="bg-red-50/50 border border-red-100 rounded-xl p-3 md:p-5">
+                        <div className="bg-red-50 border border-red-200 rounded-xl p-3 md:p-5">
                           <p className="text-gray-700 whitespace-pre-line leading-relaxed text-sm md:text-base">
                             {selectedArticle.symptoms}
                           </p>
@@ -1167,7 +1274,7 @@ export default function ArticlesPage() {
                           </div>
                           <h3 className="font-semibold text-gray-900 text-base md:text-lg">Penyebab Utama</h3>
                         </div>
-                        <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-3 md:p-5">
+                        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 md:p-5">
                           <p className="text-gray-700 whitespace-pre-line leading-relaxed text-sm md:text-base">
                             {selectedArticle.causes}
                           </p>
@@ -1184,7 +1291,7 @@ export default function ArticlesPage() {
                             </div>
                             <h3 className="font-semibold text-gray-900 text-base md:text-lg">Pengobatan</h3>
                           </div>
-                          <div className="bg-purple-50/50 border border-purple-100 rounded-xl p-3 md:p-5">
+                          <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 md:p-5">
                             <p className="text-gray-700 whitespace-pre-line leading-relaxed text-sm md:text-base">
                               {selectedArticle.treatment}
                             </p>
@@ -1199,7 +1306,7 @@ export default function ArticlesPage() {
                             </div>
                             <h3 className="font-semibold text-gray-900 text-base md:text-lg">Pencegahan</h3>
                           </div>
-                          <div className="bg-green-50/50 border border-green-100 rounded-xl p-3 md:p-5">
+                          <div className="bg-green-50 border border-green-200 rounded-xl p-3 md:p-5">
                             <p className="text-gray-700 whitespace-pre-line leading-relaxed text-sm md:text-base">
                               {selectedArticle.prevention}
                             </p>
@@ -1210,12 +1317,12 @@ export default function ArticlesPage() {
                       {/* Conclusion */}
                       <div className="space-y-2 md:space-y-3">
                         <div className="flex items-center gap-2 md:gap-3">
-                          <div className="p-1.5 md:p-2 bg-emerald-100 rounded-lg flex-shrink-0">
-                            <Sprout className="w-4 h-4 md:w-5 md:h-5 text-emerald-600" />
+                          <div className="p-1.5 md:p-2 bg-green-100 rounded-lg flex-shrink-0">
+                            <Sprout className="w-4 h-4 md:w-5 md:h-5 text-green-600" />
                           </div>
                           <h3 className="font-semibold text-gray-900 text-base md:text-lg">Kesimpulan</h3>
                         </div>
-                        <div className="bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-100 rounded-xl p-3 md:p-5">
+                        <div className="bg-green-50 border border-green-200 rounded-xl p-3 md:p-5">
                           <p className="text-gray-700 whitespace-pre-line leading-relaxed text-sm md:text-base">
                             {selectedArticle.conclusion}
                           </p>
@@ -1223,7 +1330,7 @@ export default function ArticlesPage() {
                       </div>
 
                       {/* Action Buttons */}
-                      <div className="pt-4 md:pt-6 border-t border-gray-200 mt-2">
+                      <div className="pt-4 md:pt-6 border-t border-gray-300 mt-2">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                           <div>
                             {isAdmin && selectedArticle && (
@@ -1247,7 +1354,7 @@ export default function ArticlesPage() {
                           </div>
                           <button
                             onClick={closeModal}
-                            className="px-4 py-2 md:px-6 md:py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors flex items-center gap-1.5 md:gap-2 shadow-sm hover:shadow-md w-full sm:w-auto justify-center text-sm md:text-base"
+                            className="px-4 py-2 md:px-6 md:py-3 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition-colors flex items-center gap-1.5 md:gap-2 shadow-sm hover:shadow-md w-full sm:w-auto justify-center text-sm md:text-base"
                           >
                             <X className="w-4 h-4" />
                             Tutup Artikel
@@ -1268,25 +1375,25 @@ export default function ArticlesPage() {
         <div className="fixed inset-0 z-50">
           <div 
             className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
-            onClick={() => setIsCreateModalOpen(false)}
+            onClick={handleCloseCreateModal}
           />
           
           <div className="fixed inset-0 overflow-y-auto">
             <div className="flex min-h-full items-center justify-center p-2 md:p-4">
-              <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden border border-gray-200">
-                <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm px-4 md:px-6 pt-4 md:pt-6 pb-3 md:pb-4 border-b border-gray-200">
+              <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden border border-gray-300">
+                <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm px-4 md:px-6 pt-4 md:pt-6 pb-3 md:pb-4 border-b border-gray-300">
                   <div className="flex justify-between items-start gap-2 md:gap-4">
                     <div className="flex-1 min-w-0">
                       <h2 className="text-lg md:text-2xl font-bold text-gray-900 mb-1 md:mb-2">
                         Tambah Artikel Baru
                       </h2>
-                      <p className="text-gray-600 text-xs md:text-sm leading-relaxed">
+                      <p className="text-gray-700 text-xs md:text-sm leading-relaxed">
                         Isi formulir di bawah untuk menambahkan artikel baru
                       </p>
                     </div>
                     <button
-                      onClick={() => setIsCreateModalOpen(false)}
-                      className="flex-shrink-0 rounded-lg p-1 md:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors -mt-1 -mr-1 md:-mt-1 md:-mr-2"
+                      onClick={handleCloseCreateModal}
+                      className="flex-shrink-0 rounded-lg p-1 md:p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors -mt-1 -mr-1 md:-mt-1 md:-mr-2"
                     >
                       <X className="w-4 h-4 md:w-5 md:h-5" />
                     </button>
@@ -1294,7 +1401,20 @@ export default function ArticlesPage() {
                 </div>
 
                 <div className="overflow-y-auto max-h-[calc(90vh-100px)]">
-                  {crudError && (
+                  {/* Success Message */}
+                  {crudSuccess && (
+                    <div className="mx-4 md:mx-6 mt-4 md:mt-6">
+                      <div className="bg-green-50 border border-green-200 text-green-700 px-3 md:px-4 py-2 md:py-3 rounded-lg">
+                        <div className="flex items-center">
+                          <CheckCircle className="h-4 w-4 md:h-5 md:w-5 mr-2" />
+                          <span className="text-sm">{crudSuccess}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Error Message */}
+                  {crudError && !crudSuccess && (
                     <div className="mx-4 md:mx-6 mt-4 md:mt-6">
                       <div className="bg-red-50 border border-red-200 text-red-700 px-3 md:px-4 py-2 md:py-3 rounded-lg">
                         <div className="flex items-center">
@@ -1316,9 +1436,14 @@ export default function ArticlesPage() {
                           name="title"
                           value={formData.title}
                           onChange={handleFormChange}
-                          className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm md:text-base"
+                          className={`w-full px-3 py-2 md:px-4 md:py-3 border ${
+                            validationErrors.title ? 'border-red-500' : 'border-gray-300'
+                          } rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm md:text-base`}
                           placeholder="Masukkan judul artikel"
                         />
+                        {validationErrors.title && (
+                          <p className="text-red-500 text-xs mt-1">{validationErrors.title}</p>
+                        )}
                       </div>
 
                       <div>
@@ -1330,9 +1455,14 @@ export default function ArticlesPage() {
                           name="slug"
                           value={formData.slug}
                           onChange={handleFormChange}
-                          className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm md:text-base"
+                          className={`w-full px-3 py-2 md:px-4 md:py-3 border ${
+                            validationErrors.slug ? 'border-red-500' : 'border-gray-300'
+                          } rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm md:text-base`}
                           placeholder="slug-artikel"
                         />
+                        {validationErrors.slug && (
+                          <p className="text-red-500 text-xs mt-1">{validationErrors.slug}</p>
+                        )}
                       </div>
                     </div>
 
@@ -1345,7 +1475,9 @@ export default function ArticlesPage() {
                           name="category"
                           value={formData.category}
                           onChange={handleFormChange}
-                          className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm md:text-base"
+                          className={`w-full px-3 py-2 md:px-4 md:py-3 border ${
+                            validationErrors.category ? 'border-red-500' : 'border-gray-300'
+                          } rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm md:text-base`}
                         >
                           <option value="Umum">Umum</option>
                           <option value="Tungro">Tungro</option>
@@ -1355,6 +1487,9 @@ export default function ArticlesPage() {
                           <option value="Narrow Brown Spot">Narrow Brown Spot</option>
                           <option value="Leaf Scald">Leaf Scald</option>
                         </select>
+                        {validationErrors.category && (
+                          <p className="text-red-500 text-xs mt-1">{validationErrors.category}</p>
+                        )}
                       </div>
 
                       <div>
@@ -1366,9 +1501,14 @@ export default function ArticlesPage() {
                           name="author"
                           value={formData.author}
                           onChange={handleFormChange}
-                          className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm md:text-base"
+                          className={`w-full px-3 py-2 md:px-4 md:py-3 border ${
+                            validationErrors.author ? 'border-red-500' : 'border-gray-300'
+                          } rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm md:text-base`}
                           placeholder="Nama penulis"
                         />
+                        {validationErrors.author && (
+                          <p className="text-red-500 text-xs mt-1">{validationErrors.author}</p>
+                        )}
                       </div>
                     </div>
 
@@ -1381,9 +1521,10 @@ export default function ArticlesPage() {
                         name="thumbnailUrl"
                         value={formData.thumbnailUrl}
                         onChange={handleFormChange}
-                        className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm md:text-base"
+                        className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm md:text-base"
                         placeholder="https://example.com/image.jpg"
                       />
+                      <p className="text-gray-500 text-xs mt-1">Kosongkan untuk menggunakan gambar default</p>
                     </div>
 
                     <div>
@@ -1395,9 +1536,14 @@ export default function ArticlesPage() {
                         value={formData.description}
                         onChange={handleFormChange}
                         rows={3}
-                        className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm md:text-base"
+                        className={`w-full px-3 py-2 md:px-4 md:py-3 border ${
+                          validationErrors.description ? 'border-red-500' : 'border-gray-300'
+                        } rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm md:text-base`}
                         placeholder="Deskripsi singkat artikel"
                       />
+                      {validationErrors.description && (
+                        <p className="text-red-500 text-xs mt-1">{validationErrors.description}</p>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
@@ -1410,7 +1556,7 @@ export default function ArticlesPage() {
                           value={formData.symptoms}
                           onChange={handleFormChange}
                           rows={3}
-                          className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm md:text-base"
+                          className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm md:text-base"
                           placeholder="Gejala penyakit"
                         />
                       </div>
@@ -1424,7 +1570,7 @@ export default function ArticlesPage() {
                           value={formData.causes}
                           onChange={handleFormChange}
                           rows={3}
-                          className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm md:text-base"
+                          className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm md:text-base"
                           placeholder="Penyebab penyakit"
                         />
                       </div>
@@ -1440,7 +1586,7 @@ export default function ArticlesPage() {
                           value={formData.treatment}
                           onChange={handleFormChange}
                           rows={3}
-                          className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm md:text-base"
+                          className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm md:text-base"
                           placeholder="Cara pengobatan"
                         />
                       </div>
@@ -1454,7 +1600,7 @@ export default function ArticlesPage() {
                           value={formData.prevention}
                           onChange={handleFormChange}
                           rows={3}
-                          className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm md:text-base"
+                          className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm md:text-base"
                           placeholder="Cara pencegahan"
                         />
                       </div>
@@ -1469,7 +1615,7 @@ export default function ArticlesPage() {
                         value={formData.conclusion}
                         onChange={handleFormChange}
                         rows={3}
-                        className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm md:text-base"
+                        className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm md:text-base"
                         placeholder="Kesimpulan artikel"
                       />
                     </div>
@@ -1483,17 +1629,18 @@ export default function ArticlesPage() {
                         name="diseaseId"
                         value={formData.diseaseId}
                         onChange={handleFormChange}
-                        className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm md:text-base"
+                        className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm md:text-base"
                         placeholder="ID penyakit (opsional)"
                       />
+                      <p className="text-gray-500 text-xs mt-1">Isi jika artikel terkait dengan penyakit tertentu</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="sticky bottom-0 bg-white border-t border-gray-200 px-4 md:px-6 py-3 md:py-4">
+                <div className="sticky bottom-0 bg-white border-t border-gray-300 px-4 md:px-6 py-3 md:py-4">
                   <div className="flex flex-col sm:flex-row justify-end gap-2 md:gap-3">
                     <button
-                      onClick={() => setIsCreateModalOpen(false)}
+                      onClick={handleCloseCreateModal}
                       className="px-3 py-1.5 md:px-4 md:py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors text-sm md:text-base order-2 sm:order-1"
                     >
                       Batal
@@ -1501,7 +1648,7 @@ export default function ArticlesPage() {
                     <button
                       onClick={handleCreateArticle}
                       disabled={crudLoading}
-                      className="px-3 py-1.5 md:px-4 md:py-2 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition-colors flex items-center gap-1.5 md:gap-2 justify-center text-sm md:text-base order-1 sm:order-2"
+                      className="px-3 py-1.5 md:px-4 md:py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center gap-1.5 md:gap-2 justify-center text-sm md:text-base order-1 sm:order-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {crudLoading ? (
                         <>
@@ -1528,25 +1675,25 @@ export default function ArticlesPage() {
         <div className="fixed inset-0 z-50">
           <div 
             className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
-            onClick={() => setIsEditModalOpen(false)}
+            onClick={handleCloseEditModal}
           />
           
           <div className="fixed inset-0 overflow-y-auto">
             <div className="flex min-h-full items-center justify-center p-2 md:p-4">
-              <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden border border-gray-200">
-                <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm px-4 md:px-6 pt-4 md:pt-6 pb-3 md:pb-4 border-b border-gray-200">
+              <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden border border-gray-300">
+                <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm px-4 md:px-6 pt-4 md:pt-6 pb-3 md:pb-4 border-b border-gray-300">
                   <div className="flex justify-between items-start gap-2 md:gap-4">
                     <div className="flex-1 min-w-0">
                       <h2 className="text-lg md:text-2xl font-bold text-gray-900 mb-1 md:mb-2">
                         Edit Artikel
                       </h2>
-                      <p className="text-gray-600 text-xs md:text-sm leading-relaxed">
+                      <p className="text-gray-700 text-xs md:text-sm leading-relaxed">
                         Edit informasi artikel yang dipilih
                       </p>
                     </div>
                     <button
-                      onClick={() => setIsEditModalOpen(false)}
-                      className="flex-shrink-0 rounded-lg p-1 md:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors -mt-1 -mr-1 md:-mt-1 md:-mr-2"
+                      onClick={handleCloseEditModal}
+                      className="flex-shrink-0 rounded-lg p-1 md:p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors -mt-1 -mr-1 md:-mt-1 md:-mr-2"
                     >
                       <X className="w-4 h-4 md:w-5 md:h-5" />
                     </button>
@@ -1554,7 +1701,20 @@ export default function ArticlesPage() {
                 </div>
 
                 <div className="overflow-y-auto max-h-[calc(90vh-100px)]">
-                  {crudError && (
+                  {/* Success Message */}
+                  {crudSuccess && (
+                    <div className="mx-4 md:mx-6 mt-4 md:mt-6">
+                      <div className="bg-green-50 border border-green-200 text-green-700 px-3 md:px-4 py-2 md:py-3 rounded-lg">
+                        <div className="flex items-center">
+                          <CheckCircle className="h-4 w-4 md:h-5 md:w-5 mr-2" />
+                          <span className="text-sm">{crudSuccess}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Error Message */}
+                  {crudError && !crudSuccess && (
                     <div className="mx-4 md:mx-6 mt-4 md:mt-6">
                       <div className="bg-red-50 border border-red-200 text-red-700 px-3 md:px-4 py-2 md:py-3 rounded-lg">
                         <div className="flex items-center">
@@ -1576,9 +1736,14 @@ export default function ArticlesPage() {
                           name="title"
                           value={formData.title}
                           onChange={handleFormChange}
-                          className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm md:text-base"
+                          className={`w-full px-3 py-2 md:px-4 md:py-3 border ${
+                            validationErrors.title ? 'border-red-500' : 'border-gray-300'
+                          } rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm md:text-base`}
                           placeholder="Masukkan judul artikel"
                         />
+                        {validationErrors.title && (
+                          <p className="text-red-500 text-xs mt-1">{validationErrors.title}</p>
+                        )}
                       </div>
 
                       <div>
@@ -1590,9 +1755,14 @@ export default function ArticlesPage() {
                           name="slug"
                           value={formData.slug}
                           onChange={handleFormChange}
-                          className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm md:text-base"
+                          className={`w-full px-3 py-2 md:px-4 md:py-3 border ${
+                            validationErrors.slug ? 'border-red-500' : 'border-gray-300'
+                          } rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm md:text-base`}
                           placeholder="slug-artikel"
                         />
+                        {validationErrors.slug && (
+                          <p className="text-red-500 text-xs mt-1">{validationErrors.slug}</p>
+                        )}
                       </div>
                     </div>
 
@@ -1605,7 +1775,9 @@ export default function ArticlesPage() {
                           name="category"
                           value={formData.category}
                           onChange={handleFormChange}
-                          className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm md:text-base"
+                          className={`w-full px-3 py-2 md:px-4 md:py-3 border ${
+                            validationErrors.category ? 'border-red-500' : 'border-gray-300'
+                          } rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm md:text-base`}
                         >
                           <option value="Umum">Umum</option>
                           <option value="Tungro">Tungro</option>
@@ -1615,6 +1787,9 @@ export default function ArticlesPage() {
                           <option value="Narrow Brown Spot">Narrow Brown Spot</option>
                           <option value="Leaf Scald">Leaf Scald</option>
                         </select>
+                        {validationErrors.category && (
+                          <p className="text-red-500 text-xs mt-1">{validationErrors.category}</p>
+                        )}
                       </div>
 
                       <div>
@@ -1626,9 +1801,14 @@ export default function ArticlesPage() {
                           name="author"
                           value={formData.author}
                           onChange={handleFormChange}
-                          className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm md:text-base"
+                          className={`w-full px-3 py-2 md:px-4 md:py-3 border ${
+                            validationErrors.author ? 'border-red-500' : 'border-gray-300'
+                          } rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm md:text-base`}
                           placeholder="Nama penulis"
                         />
+                        {validationErrors.author && (
+                          <p className="text-red-500 text-xs mt-1">{validationErrors.author}</p>
+                        )}
                       </div>
                     </div>
 
@@ -1641,9 +1821,10 @@ export default function ArticlesPage() {
                         name="thumbnailUrl"
                         value={formData.thumbnailUrl}
                         onChange={handleFormChange}
-                        className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm md:text-base"
+                        className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm md:text-base"
                         placeholder="https://example.com/image.jpg"
                       />
+                      <p className="text-gray-500 text-xs mt-1">Kosongkan untuk menggunakan gambar default</p>
                     </div>
 
                     <div>
@@ -1655,9 +1836,14 @@ export default function ArticlesPage() {
                         value={formData.description}
                         onChange={handleFormChange}
                         rows={3}
-                        className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm md:text-base"
+                        className={`w-full px-3 py-2 md:px-4 md:py-3 border ${
+                          validationErrors.description ? 'border-red-500' : 'border-gray-300'
+                        } rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm md:text-base`}
                         placeholder="Deskripsi singkat artikel"
                       />
+                      {validationErrors.description && (
+                        <p className="text-red-500 text-xs mt-1">{validationErrors.description}</p>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
@@ -1670,7 +1856,7 @@ export default function ArticlesPage() {
                           value={formData.symptoms}
                           onChange={handleFormChange}
                           rows={3}
-                          className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm md:text-base"
+                          className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm md:text-base"
                           placeholder="Gejala penyakit"
                         />
                       </div>
@@ -1684,7 +1870,7 @@ export default function ArticlesPage() {
                           value={formData.causes}
                           onChange={handleFormChange}
                           rows={3}
-                          className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm md:text-base"
+                          className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm md:text-base"
                           placeholder="Penyebab penyakit"
                         />
                       </div>
@@ -1700,7 +1886,7 @@ export default function ArticlesPage() {
                           value={formData.treatment}
                           onChange={handleFormChange}
                           rows={3}
-                          className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm md:text-base"
+                          className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm md:text-base"
                           placeholder="Cara pengobatan"
                         />
                       </div>
@@ -1714,7 +1900,7 @@ export default function ArticlesPage() {
                           value={formData.prevention}
                           onChange={handleFormChange}
                           rows={3}
-                          className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm md:text-base"
+                          className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm md:text-base"
                           placeholder="Cara pencegahan"
                         />
                       </div>
@@ -1729,17 +1915,17 @@ export default function ArticlesPage() {
                         value={formData.conclusion}
                         onChange={handleFormChange}
                         rows={3}
-                        className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm md:text-base"
+                        className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm md:text-base"
                         placeholder="Kesimpulan artikel"
                       />
                     </div>
                   </div>
                 </div>
 
-                <div className="sticky bottom-0 bg-white border-t border-gray-200 px-4 md:px-6 py-3 md:py-4">
+                <div className="sticky bottom-0 bg-white border-t border-gray-300 px-4 md:px-6 py-3 md:py-4">
                   <div className="flex flex-col sm:flex-row justify-end gap-2 md:gap-3">
                     <button
-                      onClick={() => setIsEditModalOpen(false)}
+                      onClick={handleCloseEditModal}
                       className="px-3 py-1.5 md:px-4 md:py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors text-sm md:text-base order-2 sm:order-1"
                     >
                       Batal
@@ -1747,7 +1933,7 @@ export default function ArticlesPage() {
                     <button
                       onClick={handleUpdateArticle}
                       disabled={crudLoading}
-                      className="px-3 py-1.5 md:px-4 md:py-2 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition-colors flex items-center gap-1.5 md:gap-2 justify-center text-sm md:text-base order-1 sm:order-2"
+                      className="px-3 py-1.5 md:px-4 md:py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center gap-1.5 md:gap-2 justify-center text-sm md:text-base order-1 sm:order-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {crudLoading ? (
                         <>
@@ -1779,19 +1965,30 @@ export default function ArticlesPage() {
           
           <div className="fixed inset-0 overflow-y-auto">
             <div className="flex min-h-full items-center justify-center p-4">
-              <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden border border-gray-200">
+              <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden border border-gray-300">
                 <div className="p-4 md:p-6">
                   <div className="text-center mb-4 md:mb-6">
                     <div className="w-12 h-12 md:w-16 md:h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
                       <AlertOctagon className="w-6 h-6 md:w-8 md:h-8 text-red-600" />
                     </div>
                     <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-1 md:mb-2">Hapus Artikel</h3>
-                    <p className="text-gray-600 text-sm md:text-base">
+                    <p className="text-gray-700 text-sm md:text-base">
                       Apakah Anda yakin ingin menghapus artikel <span className="font-semibold">`{selectedArticle.title}`</span>? Tindakan ini tidak dapat dibatalkan.
                     </p>
                   </div>
                   
-                  {crudError && (
+                  {/* Success Message */}
+                  {crudSuccess && (
+                    <div className="bg-green-50 border border-green-200 text-green-700 px-3 py-2 md:px-4 md:py-3 rounded-lg mb-3 md:mb-4">
+                      <div className="flex items-center">
+                        <CheckCircle className="h-4 w-4 md:h-5 md:w-5 mr-2" />
+                        <span className="text-sm">{crudSuccess}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Error Message */}
+                  {crudError && !crudSuccess && (
                     <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 md:px-4 md:py-3 rounded-lg mb-3 md:mb-4">
                       <div className="flex items-center">
                         <AlertTriangle className="h-4 w-4 md:h-5 md:w-5 mr-2" />
@@ -1803,14 +2000,15 @@ export default function ArticlesPage() {
                   <div className="flex flex-col sm:flex-row justify-center gap-2 md:gap-3">
                     <button
                       onClick={() => setIsDeleteModalOpen(false)}
-                      className="px-3 py-1.5 md:px-4 md:py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors text-sm md:text-base"
+                      disabled={crudLoading}
+                      className="px-3 py-1.5 md:px-4 md:py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors text-sm md:text-base disabled:opacity-50"
                     >
                       Batal
                     </button>
                     <button
                       onClick={handleDeleteArticle}
                       disabled={crudLoading}
-                      className="px-3 py-1.5 md:px-4 md:py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors flex items-center gap-1.5 md:gap-2 justify-center text-sm md:text-base"
+                      className="px-3 py-1.5 md:px-4 md:py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors flex items-center gap-1.5 md:gap-2 justify-center text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {crudLoading ? (
                         <>

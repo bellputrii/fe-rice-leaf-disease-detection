@@ -2,23 +2,21 @@
 // app/(public)/pengaturan-pengguna/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Sidebar from '@/components/dashboard/Sidebar';
 import { Navbar } from '@/components/public/Navbar';
-import { User, Save, Key, Eye, EyeOff, Loader2, X, AlertTriangle, Menu, LogOut } from "lucide-react";
+import { User, Save, Eye, EyeOff, Loader2, X, AlertTriangle, Menu, LogOut, CheckCircle, Info, Phone, Mail, User as UserIcon, Shield } from "lucide-react";
 import { useRouter } from 'next/navigation';
 
 export default function PengaturanPenggunaPage() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [activeMenu, setActiveMenu] = useState('pengaturan');
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   // State untuk modal edit profil
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const modalRef = useRef<HTMLDivElement>(null);
   
   // State untuk profil
   const [profileData, setProfileData] = useState({
@@ -44,21 +42,33 @@ export default function PengaturanPenggunaPage() {
     phone: ''
   });
 
-  const [passwordData, setPasswordData] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
-  });
-
   const [loading, setLoading] = useState({
     profile: false,
-    update: false,
-    password: false
+    update: false
   });
 
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [modalError, setModalError] = useState<string | null>(null);
+  // State untuk messages
+  const [messages, setMessages] = useState<{
+    error: string | null;
+    success: string | null;
+    modal: {
+      error: string | null;
+      success: string | null;
+      fieldErrors: {
+        fullName?: string;
+        email?: string;
+        phone?: string;
+      };
+    }
+  }>({
+    error: null,
+    success: null,
+    modal: {
+      error: null,
+      success: null,
+      fieldErrors: {}
+    }
+  });
 
   // Function to get user role
   const getUserRole = (): string | null => {
@@ -76,7 +86,8 @@ export default function PengaturanPenggunaPage() {
   const checkAuth = (): boolean => {
     const token = getToken();
     if (!token) {
-      setError('Anda belum login. Silakan login terlebih dahulu.');
+      setMessages(prev => ({ ...prev, error: 'Anda belum login. Silakan login terlebih dahulu.' }));
+      setTimeout(() => router.push('/login'), 1500);
       return false;
     }
     return true;
@@ -85,18 +96,35 @@ export default function PengaturanPenggunaPage() {
   // API Base URL
   const API_URL = 'https://padicheckai-backend-production.up.railway.app';
 
+  // Clear messages after timeout
+  const clearMessage = (type: 'error' | 'success' | 'modal.error' | 'modal.success') => {
+    setTimeout(() => {
+      if (type.includes('modal')) {
+        setMessages(prev => ({
+          ...prev,
+          modal: {
+            ...prev.modal,
+            [type.split('.')[1] as 'error' | 'success']: null
+          }
+        }));
+      } else {
+        setMessages(prev => ({ ...prev, [type]: null }));
+      }
+    }, 5000);
+  };
+
   // Fetch user profile data
   const fetchProfileData = async () => {
     if (!checkAuth()) return;
 
     const token = getToken();
     if (!token) {
-      setError('Token tidak ditemukan. Silakan login kembali.');
+      setMessages(prev => ({ ...prev, error: 'Token tidak ditemukan. Silakan login kembali.' }));
       return;
     }
 
     setLoading(prev => ({ ...prev, profile: true }));
-    setError(null);
+    setMessages(prev => ({ ...prev, error: null, success: null }));
 
     try {
       const myHeaders = new Headers();
@@ -110,10 +138,12 @@ export default function PengaturanPenggunaPage() {
 
       if (!response.ok) {
         if (response.status === 401) {
-          setError('Sesi Anda telah berakhir. Silakan login kembali.');
-          // Clear invalid token
+          setMessages(prev => ({ ...prev, error: 'Sesi Anda telah berakhir. Silakan login kembali.' }));
           localStorage.removeItem('token');
           sessionStorage.removeItem('token');
+          localStorage.removeItem('userRole');
+          sessionStorage.removeItem('userRole');
+          setTimeout(() => router.push('/login'), 2000);
           return;
         }
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -139,25 +169,69 @@ export default function PengaturanPenggunaPage() {
         if (!currentRole && userData.role) {
           localStorage.setItem('userRole', userData.role);
         }
+
+        setMessages(prev => ({ ...prev, success: 'Data profil berhasil dimuat.' }));
+        clearMessage('success');
       }
     } catch (err: any) {
       console.error('Error fetching profile:', err);
-      setError('Gagal mengambil data profil. Silakan coba lagi.');
-      
-      // Fallback data jika API error
-      const fallbackData = {
-        id: '1ead5531-473b-4dae-b1cf-150511910c9d',
-        fullName: 'Admin',
-        email: 'admin@admin.com',
-        phone: '08123456789',
-        role: 'ADMIN'
-      };
-      
-      setProfileData(fallbackData);
-      setOriginalProfileData(fallbackData);
+      setMessages(prev => ({ ...prev, error: 'Gagal mengambil data profil. Silakan coba lagi.' }));
+      clearMessage('error');
     } finally {
       setLoading(prev => ({ ...prev, profile: false }));
     }
+  };
+
+  // Validate form fields
+  const validateForm = () => {
+    const fieldErrors: { fullName?: string; email?: string; phone?: string } = {};
+    let isValid = true;
+
+    // Reset field errors
+    setMessages(prev => ({
+      ...prev,
+      modal: { ...prev.modal, fieldErrors: {} }
+    }));
+
+    // Validate full name
+    if (!editFormData.fullName.trim()) {
+      fieldErrors.fullName = 'Nama lengkap wajib diisi';
+      isValid = false;
+    } else if (editFormData.fullName.trim().length < 2) {
+      fieldErrors.fullName = 'Nama lengkap minimal 2 karakter';
+      isValid = false;
+    }
+
+    // Validate email
+    if (!editFormData.email.trim()) {
+      fieldErrors.email = 'Email wajib diisi';
+      isValid = false;
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(editFormData.email)) {
+        fieldErrors.email = 'Format email tidak valid';
+        isValid = false;
+      }
+    }
+
+    // Validate phone
+    if (!editFormData.phone.trim()) {
+      fieldErrors.phone = 'Nomor telepon wajib diisi';
+      isValid = false;
+    } else {
+      const phoneRegex = /^[0-9]{10,13}$/;
+      if (!phoneRegex.test(editFormData.phone)) {
+        fieldErrors.phone = 'Nomor telepon harus 10-13 digit angka';
+        isValid = false;
+      }
+    }
+
+    setMessages(prev => ({
+      ...prev,
+      modal: { ...prev.modal, fieldErrors }
+    }));
+
+    return isValid;
   };
 
   // Update user profile dengan modal
@@ -166,40 +240,39 @@ export default function PengaturanPenggunaPage() {
 
     const token = getToken();
     if (!token) {
-      setModalError('Token tidak ditemukan. Silakan login kembali.');
+      setMessages(prev => ({ 
+        ...prev, 
+        modal: { ...prev.modal, error: 'Token tidak ditemukan. Silakan login kembali.' }
+      }));
+      clearMessage('modal.error');
       return;
     }
 
-    // Validasi input
-    if (!editFormData.fullName.trim()) {
-      setModalError('Nama lengkap tidak boleh kosong');
+    // Validate form
+    if (!validateForm()) {
       return;
     }
 
-    if (!editFormData.email.trim()) {
-      setModalError('Email tidak boleh kosong');
-      return;
-    }
+    // Check if there are changes
+    const hasChanges = 
+      editFormData.fullName !== originalProfileData.fullName ||
+      editFormData.email !== originalProfileData.email ||
+      editFormData.phone !== originalProfileData.phone;
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(editFormData.email)) {
-      setModalError('Format email tidak valid');
-      return;
-    }
-
-    if (!editFormData.phone.trim()) {
-      setModalError('Nomor telepon tidak boleh kosong');
-      return;
-    }
-
-    const phoneRegex = /^[0-9]{10,13}$/;
-    if (!phoneRegex.test(editFormData.phone)) {
-      setModalError('Nomor telepon harus 10-13 digit angka');
+    if (!hasChanges) {
+      setMessages(prev => ({
+        ...prev,
+        modal: { ...prev.modal, error: 'Tidak ada perubahan yang perlu disimpan.' }
+      }));
+      clearMessage('modal.error');
       return;
     }
 
     setLoading(prev => ({ ...prev, update: true }));
-    setModalError(null);
+    setMessages(prev => ({ 
+      ...prev, 
+      modal: { ...prev.modal, error: null, success: null }
+    }));
 
     try {
       const myHeaders = new Headers();
@@ -219,55 +292,65 @@ export default function PengaturanPenggunaPage() {
         redirect: "follow" as RequestRedirect
       });
 
+      const responseData = await response.json();
+
       if (!response.ok) {
         if (response.status === 401) {
-          setModalError('Sesi Anda telah berakhir. Silakan login kembali.');
+          setMessages(prev => ({ 
+            ...prev, 
+            modal: { ...prev.modal, error: 'Sesi Anda telah berakhir. Silakan login kembali.' }
+          }));
           localStorage.removeItem('token');
           sessionStorage.removeItem('token');
+          localStorage.removeItem('userRole');
+          sessionStorage.removeItem('userRole');
+          setTimeout(() => {
+            setIsEditModalOpen(false);
+            router.push('/login');
+          }, 2000);
           return;
         }
         
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Gagal memperbarui profil');
+        throw new Error(responseData.message || 'Gagal memperbarui profil');
       }
 
-      const result = await response.json();
-      
-      if (result.success) {
-        setSuccess('Profil berhasil diperbarui!');
+      if (responseData.success) {
+        setMessages(prev => ({ 
+          ...prev,
+          success: 'Profil berhasil diperbarui!',
+          modal: { ...prev.modal, success: 'Profil berhasil diperbarui!' }
+        }));
         
-        // Update profile data state dengan data dari response
-        if (result.data) {
-          const updatedProfile = {
-            id: result.data.id || profileData.id,
-            fullName: result.data.fullName || editFormData.fullName,
-            email: result.data.email || editFormData.email,
-            phone: result.data.phone || editFormData.phone,
-            role: result.data.role || profileData.role
-          };
-          setProfileData(updatedProfile);
-          setOriginalProfileData(updatedProfile);
-        } else {
-          // Fallback jika data tidak ada di response
-          const updatedProfile = {
-            ...profileData,
-            fullName: editFormData.fullName,
-            email: editFormData.email,
-            phone: editFormData.phone
-          };
-          setProfileData(updatedProfile);
-          setOriginalProfileData(updatedProfile);
-        }
+        // Update profile data state
+        const updatedProfile = {
+          ...profileData,
+          fullName: editFormData.fullName,
+          email: editFormData.email,
+          phone: editFormData.phone
+        };
+        setProfileData(updatedProfile);
+        setOriginalProfileData(updatedProfile);
         
-        // Close modal
-        setIsEditModalOpen(false);
+        // Clear success messages after delay
+        clearMessage('success');
+        clearMessage('modal.success');
         
-        // Auto-hide success message after 3 seconds
-        setTimeout(() => setSuccess(null), 3000);
+        // Close modal after success
+        setTimeout(() => {
+          setIsEditModalOpen(false);
+          setMessages(prev => ({ 
+            ...prev, 
+            modal: { error: null, success: null, fieldErrors: {} }
+          }));
+        }, 1500);
       }
     } catch (err: any) {
       console.error('Error updating profile:', err);
-      setModalError(err.message || 'Gagal memperbarui profil. Silakan coba lagi.');
+      setMessages(prev => ({ 
+        ...prev, 
+        modal: { ...prev.modal, error: err.message || 'Gagal memperbarui profil. Silakan coba lagi.' }
+      }));
+      clearMessage('modal.error');
     } finally {
       setLoading(prev => ({ ...prev, update: false }));
     }
@@ -289,10 +372,8 @@ export default function PengaturanPenggunaPage() {
   const formatPhoneDisplay = (phone: string) => {
     if (!phone) return '';
     
-    // Remove any non-digit characters
     const cleaned = phone.replace(/\D/g, '');
     
-    // Format as Indonesian phone number
     if (cleaned.length === 10) {
       return cleaned.replace(/(\d{3})(\d{3})(\d{4})/, '$1 $2 $3');
     } else if (cleaned.length === 11) {
@@ -311,7 +392,6 @@ export default function PengaturanPenggunaPage() {
     const { name, value } = e.target;
     let cleanedValue = value;
     
-    // Untuk phone, hanya izinkan angka
     if (name === 'phone') {
       cleanedValue = value.replace(/\D/g, '');
     }
@@ -320,22 +400,41 @@ export default function PengaturanPenggunaPage() {
       ...prev,
       [name]: cleanedValue
     }));
+
+    // Clear field error when user starts typing
+    if (messages.modal.fieldErrors[name as keyof typeof messages.modal.fieldErrors]) {
+      setMessages(prev => ({
+        ...prev,
+        modal: {
+          ...prev.modal,
+          fieldErrors: {
+            ...prev.modal.fieldErrors,
+            [name]: undefined
+          }
+        }
+      }));
+    }
   };
 
   const handleOpenEditModal = () => {
-    // Set edit form dengan data profil saat ini
     setEditFormData({
       fullName: profileData.fullName,
       email: profileData.email,
       phone: profileData.phone
     });
-    setModalError(null); // Reset error saat membuka modal
+    setMessages(prev => ({ 
+      ...prev, 
+      modal: { error: null, success: null, fieldErrors: {} }
+    }));
     setIsEditModalOpen(true);
   };
 
   const handleCloseEditModal = () => {
     setIsEditModalOpen(false);
-    setModalError(null); // Reset error saat menutup modal
+    setMessages(prev => ({ 
+      ...prev, 
+      modal: { error: null, success: null, fieldErrors: {} }
+    }));
   };
 
   const handleSaveProfile = () => {
@@ -351,6 +450,25 @@ export default function PengaturanPenggunaPage() {
     router.push('/login');
   };
 
+  // Close modal on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+        handleCloseEditModal();
+      }
+    };
+
+    if (isEditModalOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.body.style.overflow = 'unset';
+    };
+  }, [isEditModalOpen]);
+
   // Set mounted on component mount
   useEffect(() => {
     setMounted(true);
@@ -363,7 +481,7 @@ export default function PengaturanPenggunaPage() {
     }
   }, [mounted]);
 
-  // Close sidebar when clicking outside on mobile
+  // Responsive sidebar handling
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 768) {
@@ -371,41 +489,23 @@ export default function PengaturanPenggunaPage() {
       }
     };
 
-    const handleClickOutside = (event: MouseEvent) => {
-      const sidebar = document.querySelector('.sidebar-container');
-      const menuButton = document.querySelector('.menu-button');
-      
-      if (isSidebarOpen && 
-          sidebar && 
-          !sidebar.contains(event.target as Node) && 
-          menuButton && 
-          !menuButton.contains(event.target as Node)) {
-        setIsSidebarOpen(false);
-      }
-    };
-
     window.addEventListener('resize', handleResize);
-    document.addEventListener('mousedown', handleClickOutside);
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isSidebarOpen]);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
         <div 
-          className="fixed inset-0 z-30 bg-black/50 md:hidden"
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <div className={`
-        sidebar-container fixed md:relative z-40 h-full transition-transform duration-300 ease-in-out
+        fixed md:relative z-40 h-full transition-transform duration-300 ease-in-out
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}>
         <Sidebar activeMenu={activeMenu} setActiveMenu={setActiveMenu} />
@@ -416,16 +516,16 @@ export default function PengaturanPenggunaPage() {
         <div className="md:hidden sticky top-0 z-30 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="menu-button p-2 rounded-lg hover:bg-gray-100"
+            className="p-2 rounded-lg hover:bg-gray-100 active:bg-gray-200"
           >
-            <Menu className="w-6 h-6 text-gray-700" />
+            <Menu className="w-5 h-5 text-gray-700" />
           </button>
           
           <h1 className="text-lg font-semibold text-gray-900">Pengaturan</h1>
           
           <button
             onClick={handleLogout}
-            className="p-2 rounded-lg hover:bg-red-50 text-red-600"
+            className="p-2 rounded-lg hover:bg-red-50 active:bg-red-100 text-red-600"
             title="Logout"
           >
             <LogOut className="w-5 h-5" />
@@ -437,27 +537,27 @@ export default function PengaturanPenggunaPage() {
           <Navbar activeMenu={activeMenu} />
         </div>
         
-        <main className="p-4 md:p-6 space-y-6">
+        <main className="p-4 md:p-6 space-y-4 md:space-y-6">
           {/* Header Card */}
-          <div className="bg-white rounded-xl shadow-sm p-4 md:p-6">
-            <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-4 md:mb-6">
+          <div className="bg-white rounded-lg md:rounded-xl shadow border border-gray-200 p-4 md:p-6">
+            <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-4">
               <div>
                 <h1 className="text-xl md:text-2xl font-bold text-gray-900">Pengaturan Pengguna</h1>
-                <p className="text-gray-600 mt-1 text-sm md:text-base">
+                <p className="text-gray-600 mt-1 text-sm">
                   Kelola informasi akun dan keamanan Anda
                 </p>
               </div>
               <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                 <button
                   onClick={handleOpenEditModal}
-                  className="px-4 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center gap-2 text-sm md:text-base"
+                  className="px-4 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 active:bg-green-800 transition-colors flex items-center justify-center gap-2 text-sm"
                 >
                   <User className="w-4 h-4" />
                   Edit Profil
                 </button>
                 <button
                   onClick={handleLogout}
-                  className="px-4 py-2.5 border border-red-300 text-red-700 rounded-lg font-medium hover:bg-red-50 transition-colors text-sm md:text-base hidden md:block"
+                  className="px-4 py-2.5 border border-red-300 text-red-700 rounded-lg font-medium hover:bg-red-50 active:bg-red-100 transition-colors text-sm hidden md:block"
                 >
                   Logout
                 </button>
@@ -465,27 +565,35 @@ export default function PengaturanPenggunaPage() {
             </div>
 
             {/* Success and Error Messages */}
-            {error && !isEditModalOpen && (
-              <div className="mb-4 p-3 md:p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm md:text-base">
-                {error}
+            {messages.error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+                <div className="flex items-center">
+                  <AlertTriangle className="h-4 w-4 mr-2 flex-shrink-0" />
+                  <span>{messages.error}</span>
+                </div>
               </div>
             )}
 
-            {success && (
-              <div className="mb-4 p-3 md:p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm md:text-base">
-                {success}
+            {messages.success && (
+              <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm">
+                <div className="flex items-center">
+                  <CheckCircle className="h-4 w-4 mr-2 flex-shrink-0" />
+                  <span>{messages.success}</span>
+                </div>
               </div>
             )}
           </div>
 
           {/* Profil Pengguna Card */}
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-white rounded-lg md:rounded-xl shadow border border-gray-200 overflow-hidden">
             <div className="p-4 md:p-6 border-b border-gray-200">
               <div className="flex items-center gap-3">
-                <User className="text-green-600 w-5 h-5 md:w-6 md:h-6" />
+                <div className="p-2 bg-green-50 rounded-lg">
+                  <User className="text-green-600 w-5 h-5" />
+                </div>
                 <div>
-                  <h2 className="text-base md:text-lg font-semibold text-gray-900">Profil Pengguna</h2>
-                  <p className="text-gray-500 text-xs md:text-sm">Informasi akun Anda</p>
+                  <h2 className="text-lg font-semibold text-gray-900">Profil Pengguna</h2>
+                  <p className="text-gray-500 text-sm">Informasi akun Anda</p>
                 </div>
               </div>
             </div>
@@ -493,214 +601,255 @@ export default function PengaturanPenggunaPage() {
             <div className="p-4 md:p-6">
               {!mounted || loading.profile ? (
                 <div className="flex flex-col items-center justify-center py-8 md:py-12">
-                  <Loader2 className="w-6 h-6 md:w-8 md:h-8 animate-spin text-green-600" />
-                  <span className="ml-2 text-gray-600 mt-2 text-sm md:text-base">Memuat data profil...</span>
+                  <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+                  <span className="text-gray-600 mt-2 text-sm">Memuat data profil...</span>
                 </div>
               ) : (
-                <div className="space-y-4 md:space-y-6">
+                <div className="space-y-6">
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Nama Lengkap</label>
-                      <div className="w-full px-3 py-2.5 md:px-4 md:py-3 border border-gray-200 bg-gray-50 rounded-lg text-gray-700 text-sm md:text-base">
-                        {profileData.fullName}
+                    {/* Nama Lengkap */}
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                        <UserIcon className="w-4 h-4 text-gray-400" />
+                        Nama Lengkap
+                      </label>
+                      <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 text-sm">
+                        {profileData.fullName || '-'}
                       </div>
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Email</label>
-                      <div className="w-full px-3 py-2.5 md:px-4 md:py-3 border border-gray-200 bg-gray-50 rounded-lg text-gray-700 text-sm md:text-base">
-                        {profileData.email}
+                    {/* Email */}
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                        <Mail className="w-4 h-4 text-gray-400" />
+                        Email
+                      </label>
+                      <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 text-sm">
+                        {profileData.email || '-'}
                       </div>
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Nomor Telepon</label>
-                      <div className="w-full px-3 py-2.5 md:px-4 md:py-3 border border-gray-200 bg-gray-50 rounded-lg text-gray-700 text-sm md:text-base">
+                    {/* Nomor Telepon */}
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                        <Phone className="w-4 h-4 text-gray-400" />
+                        Nomor Telepon
+                      </label>
+                      <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 text-sm">
                         {formatPhoneDisplay(profileData.phone) || '-'}
                       </div>
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">Role</label>
-                      <div className="w-full px-3 py-2.5 md:px-4 md:py-3 border border-gray-200 bg-gray-50 rounded-lg text-gray-700 text-sm md:text-base">
+                    {/* Role */}
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                        <Shield className="w-4 h-4 text-gray-400" />
+                        Role
+                      </label>
+                      <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 text-sm">
                         {formatRole(profileData.role)}
                       </div>
                     </div>
                   </div>
 
-                  <div className="bg-gray-50 rounded-lg p-3 md:p-4 border border-gray-200">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  {/* Info Box */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex gap-3">
+                      <Info className="w-5 h-5 text-blue-600 flex-shrink-0" />
                       <div>
-                        <p className="text-xs md:text-sm text-gray-600">
-                          Untuk memperbarui informasi profil, klik tombol <strong>`Edit Profil`</strong> di atas.
+                        <p className="text-sm text-blue-700">
+                          Untuk memperbarui informasi profil, klik tombol <strong>Edit Profil</strong> di atas.
                         </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Semua data dapat diperbarui kecuali role.
+                        <p className="text-xs text-blue-600 mt-1">
+                          Semua data dapat diperbarui kecuali role yang sudah ditetapkan oleh sistem.
                         </p>
                       </div>
-                      <button 
-                        onClick={handleOpenEditModal}
-                        className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors text-sm w-full sm:w-auto"
-                      >
-                        Edit Profil
-                      </button>
                     </div>
                   </div>
                 </div>
               )}
             </div>
           </div>
+        </main>
 
-          {/* Modal Edit Profil */}
-          {isEditModalOpen && (
-            <div className="fixed inset-0 z-50">
-              <div 
-                className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
-                onClick={handleCloseEditModal}
-              />
-              
-              <div className="fixed inset-0 overflow-y-auto">
-                <div className="flex min-h-full items-center justify-center p-2 md:p-4">
-                  <div className="relative bg-white rounded-lg md:rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden border border-gray-200">
-                    <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm px-4 md:px-6 pt-4 md:pt-6 pb-3 md:pb-4 border-b border-gray-200">
-                      <div className="flex justify-between items-start gap-4">
-                        <div className="flex-1 min-w-0">
-                          <h2 className="text-lg md:text-2xl font-bold text-gray-900 mb-1 md:mb-2">
-                            Edit Profil
-                          </h2>
-                          <p className="text-gray-600 text-xs md:text-sm leading-relaxed">
-                            Perbarui informasi profil Anda
-                          </p>
-                        </div>
-                        <button
-                          onClick={handleCloseEditModal}
-                          className="flex-shrink-0 rounded-lg p-1 md:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors -mt-1 -mr-1 md:-mt-1 md:-mr-2"
-                        >
-                          <X className="w-4 h-4 md:w-5 md:h-5" />
-                        </button>
-                      </div>
+        {/* Modal Edit Profil */}
+        {isEditModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <div 
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+              onClick={handleCloseEditModal}
+            />
+            
+            {/* Modal Container */}
+            <div 
+              ref={modalRef}
+              className="relative bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden"
+            >
+              {/* Header */}
+              <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-4">
+                <div className="flex justify-between items-start gap-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900 mb-1">
+                      Edit Profil
+                    </h2>
+                    <p className="text-sm text-gray-600">
+                      Perbarui informasi profil Anda
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleCloseEditModal}
+                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Messages */}
+              <div className="px-6 pt-4 space-y-3">
+                {messages.modal.error && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                    <div className="flex items-center">
+                      <AlertTriangle className="h-5 w-5 mr-2 flex-shrink-0" />
+                      <span className="text-sm">{messages.modal.error}</span>
                     </div>
+                  </div>
+                )}
 
-                    <div className="overflow-y-auto max-h-[calc(90vh-120px)] md:max-h-[calc(90vh-140px)]">
-                      {modalError && (
-                        <div className="mx-4 md:mx-6 mt-4 md:mt-6">
-                          <div className="bg-red-50 border border-red-200 text-red-700 px-3 md:px-4 py-2 md:py-3 rounded-lg">
-                            <div className="flex items-center">
-                              <AlertTriangle className="h-4 w-4 md:h-5 md:w-5 mr-2" />
-                              <span className="text-xs md:text-sm">{modalError}</span>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="px-4 md:px-6 py-4 md:py-5 space-y-4 md:space-y-5">
-                        <div className="space-y-3 md:space-y-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">
-                              Nama Lengkap *
-                            </label>
-                            <input
-                              type="text"
-                              name="fullName"
-                              value={editFormData.fullName}
-                              onChange={handleEditFormChange}
-                              className="w-full px-3 py-2.5 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm md:text-base"
-                              placeholder="Masukkan nama lengkap"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">
-                              Email *
-                            </label>
-                            <input
-                              type="email"
-                              name="email"
-                              value={editFormData.email}
-                              onChange={handleEditFormChange}
-                              className="w-full px-3 py-2.5 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm md:text-base"
-                              placeholder="email@contoh.com"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">
-                              Nomor Telepon *
-                            </label>
-                            <input
-                              type="text"
-                              name="phone"
-                              value={editFormData.phone}
-                              onChange={handleEditFormChange}
-                              className="w-full px-3 py-2.5 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm md:text-base"
-                              placeholder="08123456789"
-                              maxLength={13}
-                            />
-                            <p className="text-xs text-gray-500 mt-1">
-                              Masukkan nomor telepon tanpa kode negara dan spasi.
-                            </p>
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">
-                              Role
-                            </label>
-                            <input
-                              type="text"
-                              value={formatRole(profileData.role)}
-                              disabled
-                              className="w-full px-3 py-2.5 md:px-4 md:py-3 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed text-sm md:text-base"
-                            />
-                            <p className="text-xs text-gray-500 mt-1">Role tidak dapat diubah</p>
-                          </div>
-                        </div>
-
-                        <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 md:p-4">
-                          <h4 className="text-xs md:text-sm font-medium text-blue-900 mb-1 md:mb-2">Informasi</h4>
-                          <p className="text-xs text-blue-700">
-                            Semua field yang bertanda * wajib diisi. Pastikan data yang Anda masukkan valid.
-                          </p>
-                        </div>
-                      </div>
+                {messages.modal.success && (
+                  <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+                    <div className="flex items-center">
+                      <CheckCircle className="h-5 w-5 mr-2 flex-shrink-0" />
+                      <span className="text-sm">{messages.modal.success}</span>
                     </div>
+                  </div>
+                )}
+              </div>
 
-                    <div className="sticky bottom-0 bg-white border-t border-gray-200 px-4 md:px-6 py-3 md:py-4">
-                      <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 md:gap-3">
-                        <button
-                          onClick={handleCloseEditModal}
-                          disabled={loading.update}
-                          className="px-3 py-2 md:px-4 md:py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 text-sm md:text-base"
-                        >
-                          Batal
-                        </button>
-                        <button
-                          onClick={handleSaveProfile}
-                          disabled={loading.update || 
-                            (editFormData.fullName === originalProfileData.fullName && 
-                             editFormData.email === originalProfileData.email && 
-                             editFormData.phone === originalProfileData.phone)}
-                          className="px-3 py-2 md:px-4 md:py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm md:text-base"
-                        >
-                          {loading.update ? (
-                            <>
-                              <Loader2 className="w-3 h-3 md:w-4 md:h-4 animate-spin" />
-                              Menyimpan...
-                            </>
-                          ) : (
-                            <>
-                              <Save className="w-3 h-3 md:w-4 md:h-4" />
-                              Simpan Perubahan
-                            </>
-                          )}
-                        </button>
-                      </div>
+              {/* Content */}
+              <div className="overflow-y-auto px-6 py-4 space-y-4">
+                {/* Nama Lengkap */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Nama Lengkap *
+                  </label>
+                  <input
+                    type="text"
+                    name="fullName"
+                    value={editFormData.fullName}
+                    onChange={handleEditFormChange}
+                    className={`w-full px-4 py-3 border ${messages.modal.fieldErrors.fullName ? 'border-red-300' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm`}
+                    placeholder="Masukkan nama lengkap"
+                  />
+                  {messages.modal.fieldErrors.fullName && (
+                    <p className="text-sm text-red-600">{messages.modal.fieldErrors.fullName}</p>
+                  )}
+                </div>
+
+                {/* Email */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Email *
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={editFormData.email}
+                    onChange={handleEditFormChange}
+                    className={`w-full px-4 py-3 border ${messages.modal.fieldErrors.email ? 'border-red-300' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm`}
+                    placeholder="email@contoh.com"
+                  />
+                  {messages.modal.fieldErrors.email && (
+                    <p className="text-sm text-red-600">{messages.modal.fieldErrors.email}</p>
+                  )}
+                </div>
+
+                {/* Nomor Telepon */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Nomor Telepon *
+                  </label>
+                  <input
+                    type="text"
+                    name="phone"
+                    value={editFormData.phone}
+                    onChange={handleEditFormChange}
+                    className={`w-full px-4 py-3 border ${messages.modal.fieldErrors.phone ? 'border-red-300' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm`}
+                    placeholder="08123456789"
+                    maxLength={13}
+                  />
+                  {messages.modal.fieldErrors.phone && (
+                    <p className="text-sm text-red-600">{messages.modal.fieldErrors.phone}</p>
+                  )}
+                  <p className="text-xs text-gray-500">
+                    Masukkan nomor telepon tanpa kode negara dan spasi.
+                  </p>
+                </div>
+
+                {/* Role (disabled) */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Role
+                  </label>
+                  <input
+                    type="text"
+                    value={formatRole(profileData.role)}
+                    disabled
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-sm cursor-not-allowed"
+                  />
+                  <p className="text-xs text-gray-500">Role tidak dapat diubah</p>
+                </div>
+
+                {/* Validation Info */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex gap-3">
+                    <Info className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                    <div>
+                      <h4 className="text-sm font-medium text-blue-900 mb-1">Informasi Validasi</h4>
+                      <ul className="text-xs text-blue-700 space-y-1">
+                        <li>• Field bertanda * wajib diisi</li>
+                        <li>• Nama lengkap minimal 2 karakter</li>
+                        <li>• Email harus dalam format yang valid</li>
+                        <li>• Nomor telepon harus 10-13 digit angka</li>
+                      </ul>
                     </div>
                   </div>
                 </div>
               </div>
+
+              {/* Footer */}
+              <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4">
+                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+                  <button
+                    onClick={handleCloseEditModal}
+                    disabled={loading.update}
+                    className="px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors disabled:opacity-50 text-sm"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    onClick={handleSaveProfile}
+                    disabled={loading.update}
+                    className="px-4 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 active:bg-green-800 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  >
+                    {loading.update ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Menyimpan...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        Simpan Perubahan
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
             </div>
-          )}
-        </main>
+          </div>
+        )}
       </div>
     </div>
   );

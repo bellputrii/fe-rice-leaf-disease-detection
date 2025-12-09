@@ -48,13 +48,22 @@ export default function HomePage() {
   const [mounted, setMounted] = useState(false);
   const [userName, setUserName] = useState<string>('');
   const [apiConnected, setApiConnected] = useState<boolean>(true);
+  const [isMobile, setIsMobile] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Set mounted to true after component mounts (client-side only)
+  // Set mounted to true after component mounts and check mobile
   useEffect(() => {
     setMounted(true);
     const name = localStorage.getItem("userName") || sessionStorage.getItem("userName");
     if (name) setUserName(name);
+    
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
   // Function to get token
@@ -103,7 +112,7 @@ export default function HomePage() {
     if (!diseaseName) return 'bg-gray-500';
     
     const colorMap: Record<string, string> = {
-      'Tanaman Sehat (Healthy)': 'bg-emerald-500',
+      'Tanaman Sehat (Healthy)': 'bg-green-500',
       'Blast Daun (Leaf Blast)': 'bg-red-500',
       'Bercak Coklat (Brown Spot)': 'bg-yellow-500',
       'Hawar Daun Bakteri (BLB/Kresek)': 'bg-blue-500',
@@ -119,11 +128,11 @@ export default function HomePage() {
   const getStatusColor = (status: string): string => {
     switch (status) {
       case 'Terdeteksi Penyakit':
-        return 'text-red-600 bg-red-50 border-red-100';
+        return 'text-red-600 bg-red-50 border border-red-200';
       case 'Sehat':
-        return 'text-emerald-600 bg-emerald-50 border-emerald-100';
+        return 'text-green-600 bg-green-50 border border-green-200';
       default:
-        return 'text-gray-600 bg-gray-50 border-gray-100';
+        return 'text-gray-600 bg-gray-50 border border-gray-200';
     }
   };
 
@@ -147,7 +156,7 @@ export default function HomePage() {
     const token = getToken();
     
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/dashboard/stats`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://padicheckai-backend-production.up.railway.app'}/dashboard/stats`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -192,7 +201,7 @@ export default function HomePage() {
     const token = getToken();
     
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/dashboard/chart`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://padicheckai-backend-production.up.railway.app'}/dashboard/chart`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -234,7 +243,7 @@ export default function HomePage() {
     const token = getToken();
     
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/dashboard/recent`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://padicheckai-backend-production.up.railway.app'}/dashboard/recent`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -254,28 +263,28 @@ export default function HomePage() {
             diseaseName: "Tanaman Sehat (Healthy)",
             status: "Sehat",
             thumbnailUrl: "https://padicheckai-backend-production.up.railway.app/uploads/image-1765238944547-157655523.jpg",
-            time: new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString() // 2 hours ago
+            time: new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString()
           },
           {
             id: "DET-2025-007",
             diseaseName: "Blast Daun (Leaf Blast)",
             status: "Terdeteksi Penyakit",
             thumbnailUrl: "https://padicheckai-backend-production.up.railway.app/uploads/image-1765238139137-775971443.png",
-            time: new Date(now.getTime() - 4 * 60 * 60 * 1000).toISOString() // 4 hours ago
+            time: new Date(now.getTime() - 4 * 60 * 60 * 1000).toISOString()
           },
           {
             id: "DET-2025-006",
             diseaseName: "Blast Daun (Leaf Blast)",
             status: "Terdeteksi Penyakit",
             thumbnailUrl: "https://padicheckai-backend-production.up.railway.app/uploads/image-1765237437345-154878918.png",
-            time: new Date(now.getTime() - 5 * 60 * 60 * 1000).toISOString() // 5 hours ago
+            time: new Date(now.getTime() - 5 * 60 * 60 * 1000).toISOString()
           },
           {
             id: "DET-2025-005",
             diseaseName: "Bercak Coklat (Brown Spot)",
             status: "Terdeteksi Penyakit",
             thumbnailUrl: "https://padicheckai-backend-production.up.railway.app/uploads/image-1765237408292-208244863.png",
-            time: new Date(now.getTime() - 6 * 60 * 60 * 1000).toISOString() // 6 hours ago
+            time: new Date(now.getTime() - 6 * 60 * 60 * 1000).toISOString()
           }
         ]);
       }
@@ -342,7 +351,7 @@ export default function HomePage() {
 
   // Function to navigate to new detection
   const navigateToNewDetection = () => {
-    router.push('/detection/new');
+    router.push('/deteksi');
   };
 
   // Function to logout
@@ -351,12 +360,12 @@ export default function HomePage() {
     localStorage.removeItem('userName');
     sessionStorage.removeItem('token');
     sessionStorage.removeItem('userName');
-    router.push('/login');
+    router.push('/auth/login');
   };
 
   // Function to view all detections
   const navigateToAllDetections = () => {
-    router.push('/detection/history');
+    router.push('/riwayat');
   };
 
   // Initial data fetch
@@ -381,14 +390,14 @@ export default function HomePage() {
   // Don't render anything until component is mounted
   if (!mounted) {
     return (
-      <div className="flex min-h-screen bg-gray-50">
-        <div className="w-64 hidden lg:block"></div>
-        <div className="lg:ml-64 flex-1">
+      <div className="flex min-h-screen bg-white">
+        <div className="w-64 hidden md:block"></div>
+        <div className="md:ml-64 flex-1">
           <main className="p-4 md:p-6">
             <div className="h-8 w-32 bg-gray-200 rounded animate-pulse mb-6"></div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="bg-white rounded-lg md:rounded-xl p-4 md:p-5 border shadow-sm">
+                <div key={i} className="bg-white rounded-lg md:rounded-xl p-4 md:p-5 border border-gray-300">
                   <div className="h-5 md:h-6 w-20 md:w-32 bg-gray-200 rounded animate-pulse mb-2"></div>
                   <div className="h-6 md:h-8 w-12 md:w-20 bg-gray-200 rounded animate-pulse"></div>
                 </div>
@@ -401,64 +410,61 @@ export default function HomePage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      {/* Sidebar for desktop */}
-      <div className="hidden lg:block">
+    <div className="flex min-h-screen bg-white">
+      {/* Mobile Sidebar Overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <div className={`
+        fixed md:relative z-40 h-full transition-transform duration-300 ease-in-out
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+      `}>
         <Sidebar activeMenu={activeMenu} setActiveMenu={setActiveMenu} />
       </div>
       
-      {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden">
-          <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setSidebarOpen(false)} />
-          <div className="relative z-50 w-64 h-full">
-            <Sidebar activeMenu={activeMenu} setActiveMenu={setActiveMenu} />
-          </div>
-        </div>
-      )}
-      
-      <div className="flex-1 lg:ml-64">
-        {/* Custom Navbar for mobile */}
-        <div className="lg:hidden bg-white border-b shadow-sm">
-          <div className="flex items-center justify-between p-4">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="p-2 rounded-lg hover:bg-gray-100"
-              >
-                {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
-              </button>
-              <div>
-                <h1 className="text-lg font-bold text-gray-900">Dashboard</h1>
-                <p className="text-sm text-gray-600 truncate max-w-[180px]">
-                  Hi, {userName || 'Pengguna'}!
-                </p>
-              </div>
+      <div className="flex-1 md:ml-64">
+        {/* Mobile Header */}
+        <div className="md:hidden sticky top-0 z-30 bg-white border-b border-gray-300 px-4 py-3">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-2 text-gray-700 hover:text-gray-900"
+            >
+              {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+            <div className="text-center flex-1">
+              <h1 className="text-lg font-bold text-gray-900">Dashboard</h1>
+              <p className="text-sm text-gray-600 truncate">
+                Hi, {userName || 'Pengguna'}!
+              </p>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="text-xs text-gray-500 text-right">
-                {formatDate(new Date().toISOString())}
-              </div>
+            <div className="text-xs text-gray-600 text-right min-w-[80px]">
+              {formatDate(new Date().toISOString())}
             </div>
           </div>
         </div>
-        
+
         {/* Desktop Navbar */}
-        <div className="hidden lg:block">
-          <Navbar />
+        <div className="hidden md:block">
+          <Navbar activeMenu={activeMenu} />
         </div>
         
-        <main className="p-4 md:p-6 space-y-4 md:space-y-6">
+        <main className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6">
           {/* Welcome Header for Desktop */}
-          <div className="hidden lg:flex justify-between items-center">
+          <div className="hidden md:flex justify-between items-center">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-              <p className="text-gray-600 mt-1">
+              <p className="text-gray-700 mt-1">
                 Selamat datang kembali, {userName || 'Pengguna'}! 👋
               </p>
             </div>
             <div className="flex items-center gap-4">
-              <div className="text-sm text-gray-500">
+              <div className="text-sm text-gray-600">
                 {formatDate(new Date().toISOString())}
               </div>
               <button
@@ -498,8 +504,8 @@ export default function HomePage() {
             <div className="flex items-center gap-2 md:gap-3 w-full sm:w-auto">
               <div className={`flex items-center px-2 md:px-3 py-1 rounded-full text-xs md:text-sm ${
                 apiConnected 
-                  ? 'bg-emerald-100 text-emerald-800' 
-                  : 'bg-yellow-100 text-yellow-800'
+                  ? 'bg-green-100 text-green-800 border border-green-300' 
+                  : 'bg-yellow-100 text-yellow-800 border border-yellow-300'
               }`}>
                 {apiConnected ? (
                   <>
@@ -520,8 +526,8 @@ export default function HomePage() {
                 disabled={refreshing || isLoading}
                 className={`flex items-center gap-1 md:gap-2 px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-medium transition-colors flex-shrink-0 ${
                   refreshing || isLoading
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                    : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                    ? 'bg-gray-100 text-gray-500 cursor-not-allowed border border-gray-300'
+                    : 'bg-green-100 text-green-700 hover:bg-green-200 border border-green-300'
                 }`}
               >
                 <RefreshCw className={`h-3 w-3 md:h-4 md:w-4 ${refreshing ? 'animate-spin' : ''}`} />
@@ -536,14 +542,14 @@ export default function HomePage() {
           {/* ====== STAT CARDS ====== */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
             {/* Total Deteksi */}
-            <div className="bg-white rounded-lg md:rounded-xl p-3 md:p-5 border shadow-sm hover:shadow-md transition-shadow">
+            <div className="bg-white rounded-lg md:rounded-xl p-3 md:p-5 border border-gray-300 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-xs md:text-sm text-gray-600 flex items-center gap-1">
                     <Leaf className="h-3 w-3 md:h-4 md:w-4" />
                     <span className="truncate">Total Deteksi</span>
                   </p>
-                  <div className="text-lg md:text-2xl font-semibold mt-1">
+                  <div className="text-lg md:text-2xl font-semibold mt-1 text-gray-900">
                     {loading.stats ? (
                       <div className="h-6 md:h-8 w-12 md:w-20 bg-gray-200 rounded animate-pulse"></div>
                     ) : (
@@ -551,9 +557,9 @@ export default function HomePage() {
                     )}
                   </div>
                 </div>
-                <Activity className="w-5 h-5 md:w-6 md:h-6 text-emerald-500 flex-shrink-0" />
+                <Activity className="w-5 h-5 md:w-6 md:h-6 text-green-500 flex-shrink-0" />
               </div>
-              <div className="text-xs text-emerald-500 mt-1 md:mt-2 flex items-center gap-1 truncate">
+              <div className="text-xs text-green-600 mt-1 md:mt-2 flex items-center gap-1 truncate">
                 {stats?.totalDetections && stats.totalDetections > 0 ? (
                   <>
                     <span>Total analisis</span>
@@ -566,11 +572,11 @@ export default function HomePage() {
             </div>
 
             {/* Akurasi Model */}
-            <div className="bg-white rounded-lg md:rounded-xl p-3 md:p-5 border shadow-sm hover:shadow-md transition-shadow">
+            <div className="bg-white rounded-lg md:rounded-xl p-3 md:p-5 border border-gray-300 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-xs md:text-sm text-gray-600 truncate">Akurasi Model</p>
-                  <div className="text-lg md:text-2xl font-semibold mt-1">
+                  <div className="text-lg md:text-2xl font-semibold mt-1 text-gray-900">
                     {loading.stats ? (
                       <div className="h-6 md:h-8 w-12 md:w-20 bg-gray-200 rounded animate-pulse"></div>
                     ) : (
@@ -578,22 +584,22 @@ export default function HomePage() {
                     )}
                   </div>
                 </div>
-                <Database className="w-5 h-5 md:w-6 md:h-6 text-emerald-500 flex-shrink-0" />
+                <Database className="w-5 h-5 md:w-6 md:h-6 text-green-500 flex-shrink-0" />
               </div>
-              <div className="text-xs text-emerald-500 mt-1 md:mt-2 truncate">
+              <div className="text-xs text-green-600 mt-1 md:mt-2 truncate">
                 {stats?.averageAccuracy && stats.averageAccuracy > 0 ? 'Rata-rata semua deteksi' : 'Belum ada data'}
               </div>
             </div>
 
             {/* Penyakit Terbanyak */}
-            <div className="bg-white rounded-lg md:rounded-xl p-3 md:p-5 border shadow-sm hover:shadow-md transition-shadow">
+            <div className="bg-white rounded-lg md:rounded-xl p-3 md:p-5 border border-gray-300 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex justify-between items-start">
                 <div className="flex-1 min-w-0">
                   <p className="text-xs md:text-sm text-gray-600 flex items-center gap-1">
                     <Thermometer className="h-3 w-3 md:h-4 md:w-4" />
                     <span className="truncate">Penyakit Terbanyak</span>
                   </p>
-                  <div className="text-sm md:text-xl font-semibold mt-1 truncate">
+                  <div className="text-sm md:text-xl font-semibold mt-1 text-gray-900 truncate">
                     {loading.stats ? (
                       <div className="h-5 md:h-7 w-16 md:w-24 bg-gray-200 rounded animate-pulse"></div>
                     ) : (
@@ -602,7 +608,7 @@ export default function HomePage() {
                       ) : 'Tidak ada data'
                     )}
                   </div>
-                  <div className="text-xs text-gray-500 mt-1 truncate">
+                  <div className="text-xs text-gray-600 mt-1 truncate">
                     {loading.stats ? (
                       <div className="h-3 md:h-4 w-10 md:w-16 bg-gray-200 rounded animate-pulse"></div>
                     ) : (
@@ -615,16 +621,16 @@ export default function HomePage() {
             </div>
 
             {/* Status Sistem */}
-            <div className="bg-white rounded-lg md:rounded-xl p-3 md:p-5 border shadow-sm hover:shadow-md transition-shadow">
+            <div className="bg-white rounded-lg md:rounded-xl p-3 md:p-5 border border-gray-300 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-xs md:text-sm text-gray-600">Status Sistem</p>
                   <div className="text-sm md:text-xl font-semibold mt-1">
-                    <span className={`${apiConnected ? 'text-emerald-600' : 'text-yellow-600'}`}>
+                    <span className={`${apiConnected ? 'text-green-600' : 'text-yellow-600'}`}>
                       {apiConnected ? 'Online' : 'Demo'}
                     </span>
                   </div>
-                  <div className={`text-xs mt-1 truncate ${apiConnected ? 'text-emerald-500' : 'text-yellow-500'}`}>
+                  <div className={`text-xs mt-1 truncate ${apiConnected ? 'text-green-600' : 'text-yellow-600'}`}>
                     {apiConnected ? 'Sistem normal' : 'Data contoh'}
                   </div>
                 </div>
@@ -633,19 +639,19 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* ====== PROMO / START DETECTION BANNER ====== */}
-          <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 p-4 md:p-6 rounded-lg md:rounded-xl text-white shadow hover:shadow-lg transition-shadow">
+          {/* ====== START DETECTION BANNER ====== */}
+          <div className="bg-green-600 p-4 md:p-6 rounded-lg md:rounded-xl text-white shadow-sm hover:shadow-md transition-shadow">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div className="mb-2 md:mb-0">
                 <h2 className="text-lg md:text-xl font-semibold mb-1 md:mb-2">Mulai Deteksi Baru</h2>
-                <div className="text-xs md:text-sm text-emerald-50 max-w-xl">
+                <div className="text-xs md:text-sm text-green-100 max-w-xl">
                   Upload foto daun padi untuk deteksi penyakit otomatis dengan AI.
                   Hasil analisis dalam hitungan detik.
                 </div>
               </div>
               <button 
                 onClick={navigateToNewDetection}
-                className="px-4 py-2 md:px-5 md:py-2.5 bg-white text-emerald-700 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-50 transition font-medium shadow w-full md:w-auto"
+                className="px-4 py-2 md:px-5 md:py-2.5 bg-white text-green-700 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-50 active:bg-gray-100 transition font-medium w-full md:w-auto"
               >
                 <span>Mulai Deteksi</span>
                 <ArrowUpRight className="w-3 h-3 md:w-4 md:h-4" />
@@ -656,12 +662,12 @@ export default function HomePage() {
           {/* ====== GRID: Aktivitas Terbaru & Distribusi ====== */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
             {/* ====== Aktivitas Terbaru ====== */}
-            <div className="bg-white rounded-lg md:rounded-xl p-4 md:p-6 border shadow-sm hover:shadow-md transition-shadow">
+            <div className="bg-white rounded-lg md:rounded-xl p-4 md:p-6 border border-gray-300 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex justify-between items-center mb-3 md:mb-4">
-                <h3 className="text-base md:text-lg font-semibold">Aktivitas Terbaru</h3>
+                <h3 className="text-base md:text-lg font-semibold text-gray-900">Aktivitas Terbaru</h3>
                 <button 
                   onClick={navigateToAllDetections}
-                  className="text-xs md:text-sm text-emerald-600 hover:text-emerald-800 hover:underline"
+                  className="text-xs md:text-sm text-green-600 hover:text-green-800 hover:underline"
                 >
                   Lihat Semua →
                 </button>
@@ -671,7 +677,7 @@ export default function HomePage() {
                 // Skeleton loader for recent activities
                 <div className="space-y-2 md:space-y-3">
                   {[1, 2, 3, 4].map(i => (
-                    <div key={i} className="border rounded-lg p-2 md:p-3 animate-pulse">
+                    <div key={i} className="border border-gray-300 rounded-lg p-2 md:p-3 animate-pulse">
                       <div className="h-3 md:h-4 w-24 md:w-32 bg-gray-200 rounded mb-2"></div>
                       <div className="h-2 md:h-3 w-16 md:w-24 bg-gray-200 rounded"></div>
                     </div>
@@ -682,12 +688,12 @@ export default function HomePage() {
                   {recentActivities.slice(0, 5).map((activity) => (
                     <div 
                       key={activity.id} 
-                      className="border rounded-lg p-2 md:p-3 hover:bg-gray-50 transition cursor-pointer group"
+                      className="border border-gray-300 rounded-lg p-2 md:p-3 hover:bg-gray-50 active:bg-gray-100 transition cursor-pointer group"
                       onClick={() => navigateToDetectionDetail(activity.id)}
                     >
                       <div className="flex items-start gap-2 md:gap-3">
                         {/* Image thumbnail */}
-                        <div className="relative w-12 h-12 md:w-16 md:h-16 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
+                        <div className="relative w-12 h-12 md:w-16 md:h-16 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 border border-gray-300">
                           {activity.thumbnailUrl ? (
                             <Image
                               src={activity.thumbnailUrl}
@@ -708,22 +714,22 @@ export default function HomePage() {
                             <div className="min-w-0">
                               <div className="flex items-center gap-1 md:gap-2">
                                 <span className="text-base md:text-lg">{getDiseaseIcon(activity.diseaseName)}</span>
-                                <div className="font-medium text-gray-800 truncate text-sm md:text-base">
+                                <div className="font-medium text-gray-900 truncate text-sm md:text-base">
                                   {activity.diseaseName}
                                 </div>
                               </div>
-                              <div className="text-xs text-gray-500 mt-0.5 md:mt-1 truncate">
+                              <div className="text-xs text-gray-600 mt-0.5 md:mt-1 truncate">
                                 ID: {activity.id}
                               </div>
                             </div>
-                            <ExternalLink className="h-3 w-3 md:h-4 md:w-4 text-gray-400 group-hover:text-emerald-500 transition-colors flex-shrink-0 mt-1" />
+                            <ExternalLink className="h-3 w-3 md:h-4 md:w-4 text-gray-400 group-hover:text-green-500 transition-colors flex-shrink-0 mt-1" />
                           </div>
                           
                           <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 mt-1 md:mt-2">
-                            <span className={`px-1.5 py-0.5 md:px-2 md:py-0.5 rounded text-xs font-medium border ${getStatusColor(activity.status)} self-start`}>
+                            <span className={`px-1.5 py-0.5 md:px-2 md:py-0.5 rounded text-xs font-medium ${getStatusColor(activity.status)} self-start`}>
                               {activity.status}
                             </span>
-                            <span className="text-xs text-gray-500 flex items-center gap-1">
+                            <span className="text-xs text-gray-600 flex items-center gap-1">
                               <Clock className="h-2 w-2 md:h-3 md:w-3" />
                               {getTimeAgo(activity.time)}
                             </span>
@@ -735,18 +741,18 @@ export default function HomePage() {
                 </div>
               ) : (
                 <div className="text-center py-6 md:py-8">
-                  <div className="text-gray-400 mb-2 text-sm md:text-base">Belum ada aktivitas deteksi</div>
-                  <div className="text-xs md:text-sm text-gray-500">Mulai deteksi pertama Anda!</div>
+                  <div className="text-gray-500 mb-2 text-sm md:text-base">Belum ada aktivitas deteksi</div>
+                  <div className="text-xs md:text-sm text-gray-600">Mulai deteksi pertama Anda!</div>
                 </div>
               )}
             </div>
 
             {/* ====== Distribusi Penyakit ====== */}
-            <div className="bg-white rounded-lg md:rounded-xl p-4 md:p-6 border shadow-sm hover:shadow-md transition-shadow">
+            <div className="bg-white rounded-lg md:rounded-xl p-4 md:p-6 border border-gray-300 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex justify-between items-center mb-3 md:mb-4">
-                <h3 className="text-base md:text-lg font-semibold">Distribusi Penyakit</h3>
+                <h3 className="text-base md:text-lg font-semibold text-gray-900">Distribusi Penyakit</h3>
                 {loading.chart && (
-                  <div className="flex items-center text-xs md:text-sm text-gray-500">
+                  <div className="flex items-center text-xs md:text-sm text-gray-600">
                     <RefreshCw className="h-3 w-3 md:h-4 md:w-4 animate-spin mr-1 md:mr-2" />
                     Loading...
                   </div>
@@ -774,11 +780,11 @@ export default function HomePage() {
                         <div className="flex justify-between mb-1">
                           <div className="flex items-center gap-1 md:gap-2">
                             <div className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full ${getDiseaseColor(item.name)}`}></div>
-                            <div className="text-xs md:text-sm font-medium truncate max-w-[150px] md:max-w-[200px]">
+                            <div className="text-xs md:text-sm font-medium text-gray-900 truncate max-w-[150px] md:max-w-[200px]">
                               {item.name}
                             </div>
                           </div>
-                          <div className="text-xs md:text-sm font-semibold">{item.percentage}%</div>
+                          <div className="text-xs md:text-sm font-semibold text-gray-900">{item.percentage}%</div>
                         </div>
                         {/* Progress Bar */}
                         <div className="w-full h-1.5 md:h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -787,7 +793,7 @@ export default function HomePage() {
                             style={{ width: `${item.percentage}%` }}
                           ></div>
                         </div>
-                        <div className="text-xs text-gray-500 mt-0.5 md:mt-1 flex justify-between">
+                        <div className="text-xs text-gray-600 mt-0.5 md:mt-1 flex justify-between">
                           <span>{item.count} kasus</span>
                           <span>{item.percentage.toFixed(1)}% dari total</span>
                         </div>
@@ -796,35 +802,35 @@ export default function HomePage() {
                   </div>
                   
                   {/* Summary */}
-                  <div className="mt-4 md:mt-6 pt-3 md:pt-4 border-t border-gray-100">
+                  <div className="mt-4 md:mt-6 pt-3 md:pt-4 border-t border-gray-300">
                     <div className="flex justify-between text-xs md:text-sm">
-                      <span className="text-gray-600">Total Kasus:</span>
-                      <span className="font-semibold">
+                      <span className="text-gray-700">Total Kasus:</span>
+                      <span className="font-semibold text-gray-900">
                         {distribution.reduce((sum, item) => sum + item.count, 0)} deteksi
                       </span>
                     </div>
                     <div className="flex justify-between text-xs md:text-sm mt-0.5 md:mt-1">
-                      <span className="text-gray-600">Rentang Akurasi:</span>
-                      <span className="font-semibold text-emerald-600">82.16%</span>
+                      <span className="text-gray-700">Rentang Akurasi:</span>
+                      <span className="font-semibold text-green-600">82.16%</span>
                     </div>
                   </div>
                 </>
               ) : (
                 <div className="text-center py-6 md:py-8">
-                  <div className="text-gray-400 mb-2 text-sm md:text-base">Belum ada data distribusi</div>
-                  <div className="text-xs md:text-sm text-gray-500">Lakukan deteksi untuk melihat distribusi penyakit</div>
+                  <div className="text-gray-500 mb-2 text-sm md:text-base">Belum ada data distribusi</div>
+                  <div className="text-xs md:text-sm text-gray-600">Lakukan deteksi untuk melihat distribusi penyakit</div>
                 </div>
               )}
             </div>
           </div>
 
           {/* Info Footer */}
-          <div className="bg-gray-50 rounded-lg md:rounded-xl p-3 md:p-4 border text-center">
-            <p className="text-xs md:text-sm text-gray-600">
+          <div className="bg-gray-50 rounded-lg md:rounded-xl p-3 md:p-4 border border-gray-300 text-center">
+            <p className="text-xs md:text-sm text-gray-700">
               Dashboard ini {apiConnected ? 'menampilkan data real-time' : 'sedang menampilkan data contoh'}. 
               {!apiConnected && ' Untuk data real-time, pastikan backend API berjalan.'}
             </p>
-            <div className="mt-1 md:mt-2 text-xs text-gray-500">
+            <div className="mt-1 md:mt-2 text-xs text-gray-600">
               Data terakhir diperbarui: {new Date().toLocaleString('id-ID', {
                 day: 'numeric',
                 month: 'short',

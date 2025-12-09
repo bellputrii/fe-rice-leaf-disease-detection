@@ -174,7 +174,7 @@ export default function RegisterPage() {
   };
 
   const getStrengthColor = () => {
-    if (passwordStrength >= 75) return 'bg-emerald-500';
+    if (passwordStrength >= 75) return 'bg-green-600';
     if (passwordStrength >= 50) return 'bg-yellow-500';
     if (passwordStrength >= 25) return 'bg-orange-500';
     return 'bg-red-500';
@@ -188,20 +188,20 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-50 to-white flex flex-col">
+    <div className="min-h-screen bg-white flex flex-col">
       {/* Header untuk mobile */}
-      <div className="md:hidden px-4 py-4 bg-white border-b border-gray-100">
+      <div className="md:hidden px-4 py-4 bg-white border-b border-gray-200">
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.back()}
             className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
             aria-label="Kembali"
           >
-            <ArrowLeft className="h-5 w-5 text-gray-600" />
+            <ArrowLeft className="h-5 w-5 text-gray-700" />
           </button>
           <div>
             <h1 className="text-lg font-bold text-gray-900">Buat Akun</h1>
-            <p className="text-xs text-gray-500">Mulai dengan PadiCheck AI</p>
+            <p className="text-xs text-gray-600">Mulai dengan PadiCheck AI</p>
           </div>
         </div>
       </div>
@@ -211,8 +211,8 @@ export default function RegisterPage() {
           {/* Desktop Header */}
           <div className="hidden md:block text-center mb-8">
             <div className="mb-4">
-              <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">
-                <Smartphone className="h-8 w-8 text-emerald-600" />
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                <Smartphone className="h-8 w-8 text-green-600" />
               </div>
             </div>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
@@ -226,13 +226,13 @@ export default function RegisterPage() {
           {/* Mobile App Info */}
           <div className="md:hidden mb-6">
             <div className="text-center">
-              <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Smartphone className="h-6 w-6 text-emerald-600" />
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Smartphone className="h-6 w-6 text-green-600" />
               </div>
               <h2 className="text-lg font-semibold text-gray-900 mb-1">
                 Aplikasi PadiCheck AI
               </h2>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-600">
                 Deteksi penyakit padi dengan mudah di smartphone Anda
               </p>
             </div>
@@ -247,7 +247,7 @@ export default function RegisterPage() {
             )}
 
             {success && (
-              <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-3 md:px-4 py-3 rounded-lg mb-4 md:mb-6 text-sm">
+              <div className="bg-green-50 border border-green-200 text-green-700 px-3 md:px-4 py-3 rounded-lg mb-4 md:mb-6 text-sm">
                 {success}
               </div>
             )}
@@ -260,7 +260,7 @@ export default function RegisterPage() {
                     Nama Lengkap
                   </label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
                     <input
                       type="text"
                       id="fullName"
@@ -268,7 +268,7 @@ export default function RegisterPage() {
                       value={formData.fullName}
                       onChange={handleChange}
                       required
-                      className="w-full pl-10 pr-4 py-2.5 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm md:text-base placeholder:text-gray-400"
+                      className="w-full pl-10 pr-4 py-2.5 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm md:text-base placeholder:text-gray-500"
                       placeholder="Masukkan nama lengkap"
                     />
                   </div>
@@ -280,7 +280,7 @@ export default function RegisterPage() {
                     Alamat Email
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
                     <input
                       type="email"
                       id="email"
@@ -288,7 +288,7 @@ export default function RegisterPage() {
                       value={formData.email}
                       onChange={handleChange}
                       required
-                      className="w-full pl-10 pr-4 py-2.5 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm md:text-base placeholder:text-gray-400"
+                      className="w-full pl-10 pr-4 py-2.5 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm md:text-base placeholder:text-gray-500"
                       placeholder="contoh@email.com"
                     />
                   </div>
@@ -300,7 +300,7 @@ export default function RegisterPage() {
                     Nomor Telepon
                   </label>
                   <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
                     <input
                       type="tel"
                       id="phone"
@@ -308,7 +308,7 @@ export default function RegisterPage() {
                       value={formData.phone}
                       onChange={handleChange}
                       required
-                      className="w-full pl-10 pr-4 py-2.5 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm md:text-base placeholder:text-gray-400"
+                      className="w-full pl-10 pr-4 py-2.5 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm md:text-base placeholder:text-gray-500"
                       placeholder="08xxxxxxxxxx"
                       maxLength={15}
                       inputMode="numeric"
@@ -325,7 +325,7 @@ export default function RegisterPage() {
                     Password
                   </label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
                     <input
                       type={showPassword ? 'text' : 'password'}
                       id="password"
@@ -333,7 +333,7 @@ export default function RegisterPage() {
                       value={formData.password}
                       onChange={handleChange}
                       required
-                      className="w-full pl-10 pr-12 py-2.5 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm md:text-base placeholder:text-gray-400"
+                      className="w-full pl-10 pr-12 py-2.5 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm md:text-base placeholder:text-gray-500"
                       placeholder="Buat password yang kuat"
                     />
                     <button
@@ -343,9 +343,9 @@ export default function RegisterPage() {
                       aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
                     >
                       {showPassword ? (
-                        <EyeOff className="h-4 w-4 text-gray-400" />
+                        <EyeOff className="h-4 w-4 text-gray-500" />
                       ) : (
-                        <Eye className="h-4 w-4 text-gray-400" />
+                        <Eye className="h-4 w-4 text-gray-500" />
                       )}
                     </button>
                   </div>
@@ -356,7 +356,7 @@ export default function RegisterPage() {
                       <div className="flex justify-between text-xs mb-1">
                         <span className="text-gray-600">Kekuatan password</span>
                         <span className={`font-medium ${
-                          passwordStrength >= 75 ? 'text-emerald-600' :
+                          passwordStrength >= 75 ? 'text-green-600' :
                           passwordStrength >= 50 ? 'text-yellow-600' :
                           passwordStrength >= 25 ? 'text-orange-600' : 'text-red-600'
                         }`}>
@@ -379,20 +379,20 @@ export default function RegisterPage() {
                         Kriteria password
                       </summary>
                       <div className="mt-2 space-y-1">
-                        <div className="flex items-center text-xs text-gray-500">
-                          <CheckCircle className={`h-3 w-3 mr-2 ${formData.password.length >= 8 ? 'text-emerald-500' : 'text-gray-300'}`} />
+                        <div className="flex items-center text-xs text-gray-600">
+                          <CheckCircle className={`h-3 w-3 mr-2 ${formData.password.length >= 8 ? 'text-green-500' : 'text-gray-300'}`} />
                           Minimal 8 karakter
                         </div>
-                        <div className="flex items-center text-xs text-gray-500">
-                          <CheckCircle className={`h-3 w-3 mr-2 ${/[A-Z]/.test(formData.password) ? 'text-emerald-500' : 'text-gray-300'}`} />
+                        <div className="flex items-center text-xs text-gray-600">
+                          <CheckCircle className={`h-3 w-3 mr-2 ${/[A-Z]/.test(formData.password) ? 'text-green-500' : 'text-gray-300'}`} />
                           Satu huruf besar
                         </div>
-                        <div className="flex items-center text-xs text-gray-500">
-                          <CheckCircle className={`h-3 w-3 mr-2 ${/[0-9]/.test(formData.password) ? 'text-emerald-500' : 'text-gray-300'}`} />
+                        <div className="flex items-center text-xs text-gray-600">
+                          <CheckCircle className={`h-3 w-3 mr-2 ${/[0-9]/.test(formData.password) ? 'text-green-500' : 'text-gray-300'}`} />
                           Satu angka
                         </div>
-                        <div className="flex items-center text-xs text-gray-500">
-                          <CheckCircle className={`h-3 w-3 mr-2 ${/[^A-Za-z0-9]/.test(formData.password) ? 'text-emerald-500' : 'text-gray-300'}`} />
+                        <div className="flex items-center text-xs text-gray-600">
+                          <CheckCircle className={`h-3 w-3 mr-2 ${/[^A-Za-z0-9]/.test(formData.password) ? 'text-green-500' : 'text-gray-300'}`} />
                           Satu karakter khusus
                         </div>
                       </div>
@@ -401,20 +401,20 @@ export default function RegisterPage() {
                     {/* Desktop Password Requirements */}
                     <div className="hidden md:block mt-3 space-y-1">
                       <p className="text-xs text-gray-600">Password harus mengandung:</p>
-                      <div className="flex items-center text-xs text-gray-500">
-                        <CheckCircle className={`h-3 w-3 mr-2 ${formData.password.length >= 8 ? 'text-emerald-500' : 'text-gray-300'}`} />
+                      <div className="flex items-center text-xs text-gray-600">
+                        <CheckCircle className={`h-3 w-3 mr-2 ${formData.password.length >= 8 ? 'text-green-500' : 'text-gray-300'}`} />
                         Minimal 8 karakter
                       </div>
-                      <div className="flex items-center text-xs text-gray-500">
-                        <CheckCircle className={`h-3 w-3 mr-2 ${/[A-Z]/.test(formData.password) ? 'text-emerald-500' : 'text-gray-300'}`} />
+                      <div className="flex items-center text-xs text-gray-600">
+                        <CheckCircle className={`h-3 w-3 mr-2 ${/[A-Z]/.test(formData.password) ? 'text-green-500' : 'text-gray-300'}`} />
                         Satu huruf besar
                       </div>
-                      <div className="flex items-center text-xs text-gray-500">
-                        <CheckCircle className={`h-3 w-3 mr-2 ${/[0-9]/.test(formData.password) ? 'text-emerald-500' : 'text-gray-300'}`} />
+                      <div className="flex items-center text-xs text-gray-600">
+                        <CheckCircle className={`h-3 w-3 mr-2 ${/[0-9]/.test(formData.password) ? 'text-green-500' : 'text-gray-300'}`} />
                         Satu angka
                       </div>
-                      <div className="flex items-center text-xs text-gray-500">
-                        <CheckCircle className={`h-3 w-3 mr-2 ${/[^A-Za-z0-9]/.test(formData.password) ? 'text-emerald-500' : 'text-gray-300'}`} />
+                      <div className="flex items-center text-xs text-gray-600">
+                        <CheckCircle className={`h-3 w-3 mr-2 ${/[^A-Za-z0-9]/.test(formData.password) ? 'text-green-500' : 'text-gray-300'}`} />
                         Satu karakter khusus
                       </div>
                     </div>
@@ -427,7 +427,7 @@ export default function RegisterPage() {
                     Konfirmasi Password
                   </label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
                     <input
                       type={showConfirmPassword ? 'text' : 'password'}
                       id="confirmPassword"
@@ -435,7 +435,7 @@ export default function RegisterPage() {
                       value={formData.confirmPassword}
                       onChange={handleChange}
                       required
-                      className="w-full pl-10 pr-12 py-2.5 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm md:text-base placeholder:text-gray-400"
+                      className="w-full pl-10 pr-12 py-2.5 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm md:text-base placeholder:text-gray-500"
                       placeholder="Konfirmasi password Anda"
                     />
                     <button
@@ -445,9 +445,9 @@ export default function RegisterPage() {
                       aria-label={showConfirmPassword ? "Sembunyikan password" : "Tampilkan password"}
                     >
                       {showConfirmPassword ? (
-                        <EyeOff className="h-4 w-4 text-gray-400" />
+                        <EyeOff className="h-4 w-4 text-gray-500" />
                       ) : (
-                        <Eye className="h-4 w-4 text-gray-400" />
+                        <Eye className="h-4 w-4 text-gray-500" />
                       )}
                     </button>
                   </div>
@@ -459,15 +459,15 @@ export default function RegisterPage() {
                     type="checkbox"
                     id="terms"
                     required
-                    className="h-4 w-4 mt-0.5 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
+                    className="h-4 w-4 mt-0.5 text-green-600 focus:ring-green-500 border-gray-300 rounded"
                   />
                   <label htmlFor="terms" className="ml-2 block text-xs md:text-sm text-gray-700 leading-tight">
                     Saya setuju dengan{' '}
-                    <Link href="/terms" className="text-emerald-600 hover:text-emerald-500">
+                    <Link href="/terms" className="text-green-600 hover:text-green-700">
                       Syarat Layanan
                     </Link>{' '}
                     dan{' '}
-                    <Link href="/privacy" className="text-emerald-600 hover:text-emerald-500">
+                    <Link href="/privacy" className="text-green-600 hover:text-green-700">
                       Kebijakan Privasi
                     </Link>
                   </label>
@@ -478,7 +478,7 @@ export default function RegisterPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-emerald-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm md:text-base shadow-sm hover:shadow-md"
+                className="w-full bg-green-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm md:text-base shadow-sm hover:shadow-md"
               >
                 {loading ? (
                   <>
@@ -497,7 +497,7 @@ export default function RegisterPage() {
               <div className="text-center pt-3 md:pt-4">
                 <p className="text-gray-600 text-xs md:text-sm">
                   Sudah punya akun?{' '}
-                  <Link href="/login" className="text-emerald-600 font-medium hover:text-emerald-500">
+                  <Link href="/login" className="text-green-600 font-medium hover:text-green-700">
                     Masuk di sini
                   </Link>
                 </p>
@@ -506,7 +506,7 @@ export default function RegisterPage() {
               {/* Divider */}
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-200"></div>
+                  <div className="w-full border-t border-gray-300"></div>
                 </div>
                 <div className="relative flex justify-center text-xs">
                   <span className="px-2 bg-white text-gray-500">
@@ -519,7 +519,7 @@ export default function RegisterPage() {
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
-                  className="flex items-center justify-center gap-2 py-2.5 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                  className="flex items-center justify-center gap-2 py-2.5 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm text-gray-700"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -532,7 +532,7 @@ export default function RegisterPage() {
                 </button>
                 <button
                   type="button"
-                  className="flex items-center justify-center gap-2 py-2.5 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                  className="flex items-center justify-center gap-2 py-2.5 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm text-gray-700"
                 >
                   <svg className="w-5 h-5" fill="#1877F2" viewBox="0 0 24 24">
                     <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
@@ -545,11 +545,11 @@ export default function RegisterPage() {
 
             {/* Mobile Additional Info */}
             <div className="mt-6 md:hidden">
-              <div className="bg-emerald-50 rounded-lg p-4 text-center">
-                <p className="text-xs text-emerald-800 font-medium mb-1">
+              <div className="bg-green-50 rounded-lg p-4 text-center">
+                <p className="text-xs text-green-800 font-medium mb-1">
                   💡 Tips untuk petani:
                 </p>
-                <p className="text-xs text-emerald-700">
+                <p className="text-xs text-green-700">
                   Gunakan aplikasi ini untuk mendeteksi penyakit padi langsung di sawah dengan smartphone Anda!
                 </p>
               </div>
@@ -569,7 +569,7 @@ export default function RegisterPage() {
 
       {/* Mobile Bottom Info */}
       {isMobile && (
-        <div className="border-t border-gray-200 bg-white p-4">
+        <div className="border-t border-gray-300 bg-white p-4">
           <div className="flex items-center justify-center gap-2 text-xs text-gray-600">
             <Smartphone className="h-3 w-3" />
             <span>Aplikasi yang ramah untuk petani</span>
